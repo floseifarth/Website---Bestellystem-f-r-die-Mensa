@@ -117,31 +117,10 @@
           margin-bottom: 20px;
       }
 
-      .schnellmenu {
-          gap: 80px;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-
-      }
-
-      .schnellmenu-icon {
-          height: 50px;
-          padding-left: 50px;
-      }
-
-      .schnellmenu-info {
-          text-align: center;
-          color: rgba(0, 0, 0, 0.767);
-      }
-
-      .menublock {
-          width: 150px;
-          height: 150px;
-          background-color: #e5e5fa;
-          border-radius: 8px;
-          align-content: center;
+      .startseite-button {
           text-decoration: none;
       }
+
 
 
       .fußzeile {

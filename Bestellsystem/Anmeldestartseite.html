@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 
 <head>
     <meta charset="UTF-8">
@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style-Profil.css">
+    <link rel="stylesheet" href="style-Anmeldestartseite.css">
 </head>
 
 <body>
@@ -19,7 +19,7 @@
     <h1> Willkommen auf der Bestellwebsite der Hochschule Esslingen </h1>
 
     <div class="menuleiste-links">
-        <a class="menu" href="Startseite.html">
+        <a class="active" href="Anmeldestartseite.html">
             <img class="menu-icon" src="img/haus.svg" alt="">
             Startseite
         </a> <br>
@@ -43,17 +43,18 @@
             <img class="menu-icon" src="img/QR-Code.svg" alt="">
             QR-Code
         </a><br>
-        <a class="active" href="Profil.html">
+        <a class="menu" href="Profil.html">
             <img class="menu-icon" src="img/Profil.svg" alt="">
             Profil
         </a><br>
     </div>
+
     <div class="datum">
         <div class="datum-row">
             <p><span id="datum"></span></p>
             <div class="profile-box">
                 <img class="profile-pic" src="img/Profil.svg" alt="Profilbild">
-                <span>Hallo Florian</span>
+                <span>Anmelden ...</span>
             </div>
         </div>
         <script>
@@ -70,20 +71,21 @@
             document.getElementById("datum").innerText = wochentag + ", " + datum;
         </script>
     </div>
+
+
     <div class="hauptfeld-mitte">
-        <h1>Profil</h1>
-        <!-- Hier kommt der Profil-Inhalt -->
-
-
-        Hier können Sie Ihre Profildaten einsehen. <br><br>
-
-        Vorname: <input type="text" placeholder="Vorname" class="profil-input"> <br><br>
-        Nachname: <input type="text" placeholder="Nachname" class="profil-input"> <br><br>
-        Matrikelnummer: <input type="text" placeholder="Matrikelnummer" class="profil-input"> <br><br>
-        Studiengang: <input type="text" placeholder="Studiengang" class="profil-input"> <br><br>
-        E-Mail: <input type="email" placeholder="E-Mail" class="profil-input"> <br><br>
-        Status: <input type="text" placeholder="Status" class="profil-input"> <br><br>
-        <!-- <button class="profil-button">Daten speichern</button> -->
+        <h1>Startseite</h1>
+        <!-- Hier kommt der Startseiten-Inhalt -->
+        Herzlichen Willkommen auf der Bestellwebsite der Hochschule Esslingen! <br><br>
+        Hier können Sie bequem Ihre Mahlzeiten vorbestellen, Ihren Speiseplan einsehen, Ihr Guthaben verwalten und Ihren
+        persönlichen QR-Code abrufen. <br><br>
+        Nutzen Sie die Navigation auf der linken Seite, um zu den verschiedenen Funktionen zu gelangen. <br><br>
+        Wir wünschen Ihnen einen guten Appetit und viel Freude beim Bestellen!
+        <br><br>
+        Bitte melden Sie sich an, um alle Funktionen nutzen zu können. <br><br>
+        <input type="text" placeholder="Anmeldename" class="guthaben-input"> <br><br>
+        <input type="password" placeholder="Passwort" class="guthaben-input"> <br><br>
+        <button><a class="startseite-button" href="Startseite.html">Anmelden</a></button>
 
     </div>
 
