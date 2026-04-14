@@ -120,15 +120,26 @@
       .gerichtdatum {
           font-weight: 600;
           color: #525252;
+          min-width: 160px;
+          line-height: 1.4;
+      }
+
+      .speiseplan-day {
+          display: flex;
+          align-items: flex-start;
+          gap: 32px;
+          margin-bottom: 32px;
       }
 
       .speiseplan-container {
           display: flex;
-          justify-content: space-between;
+          justify-content: center;
           align-items: flex-start;
-          width: 80%;
+          width: calc(100% - 190px);
+          max-width: 700px;
           margin-top: 0px;
-          margin-left: 300px;
+          margin-left: 0;
+          gap: 16px;
       }
 
       .kategorie {
@@ -141,7 +152,7 @@
 
       .sidebar {
           width: 3px;
-          min-height: 100vh;
+          min-height: 80px;
           background-color: #343333;
           order: 2;
           flex-shrink: 0;
@@ -150,9 +161,10 @@
       .gericht-group {
           display: flex;
           flex-direction: column;
-          align-items: flex-end;
+          align-items: flex-start;
           gap: 5px;
           order: 3;
+          margin-left: 8px;
       }
 
       .gericht {
