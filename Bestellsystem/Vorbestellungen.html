@@ -56,80 +56,9 @@
                 <span>Hallo Florian</span>
             </div>
         </div>
-        <script>
-            // Warten bis die Seite vollständig geladen ist
-            document.addEventListener('DOMContentLoaded', function () {
-                let heute = new Date();
 
-                let tage = [
-                    "Sonntag", "Montag", "Dienstag",
-                    "Mittwoch", "Donnerstag", "Freitag", "Samstag"
-                ];
-
-                let wochentag = tage[heute.getDay()];
-                let datum = heute.toLocaleDateString("de-DE");
-
-                document.getElementById("datum").innerText = wochentag + ", " + datum;
-
-                const menuByDay = {
-                    Montag: { name: "Pasta Pesto", price: "5,20 €", image: "img/pasta-pesto.jpeg", alt: "Pasta Pesto" },
-                    Dienstag: { name: "Currywurst mit Pommes", price: "4,10 €", image: "img/currwurst.jpeg", alt: "Currywurst mit Pommes" },
-                    Mittwoch: { name: "Currywurst mit Pommes", price: "4,10 €", image: "img/currwurst.jpeg", alt: "Currywurst mit Pommes" },
-                    Donnerstag: { name: "Gebratener Lachs mit Gemüse", price: "5,90 €", image: "img/gebratener-lachs-mit-gemuese.jpeg", alt: "Gebratener Lachs mit Gemüse" },
-                    Freitag: { name: "Currywurst mit Pommes", price: "4,10 €", image: "img/currwurst.jpeg", alt: "Currywurst mit Pommes" }
-                };
-
-                function updateDish(weekday) {
-                    const dish = menuByDay[weekday] || menuByDay.Freitag;
-                    document.getElementById("gericht-name").innerText = dish.name;
-                    document.getElementById("gericht-preis").innerText = dish.price;
-                    const dishImage = document.querySelector(".gerichtbild");
-                    if (dishImage) {
-                        dishImage.src = dish.image;
-                        dishImage.alt = dish.alt;
-                    }
-                }
-
-                // Datum-Optionen für 2 Wochen im Voraus generieren (nur Wochentage)
-                let datumSelect = document.getElementById("datum-select");
-                let startDate = new Date();
-                startDate.setDate(startDate.getDate() + 14); // 2 Wochen im Voraus
-
-                let addedDays = 0;
-                let currentDate = new Date(startDate);
-
-                while (addedDays < 14) {
-                    let dayOfWeek = currentDate.getDay();
-
-                    // Überspringe Samstag (6) und Sonntag (0)
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                        let tagName = tage[dayOfWeek];
-                        let datumString = currentDate.toLocaleDateString("de-DE");
-
-                        let option = document.createElement("option");
-                        option.value = currentDate.toISOString().split('T')[0];
-                        option.textContent = tagName + ", " + datumString;
-                        option.dataset.weekday = tagName;
-
-                        datumSelect.appendChild(option);
-                        addedDays++;
-                    }
-
-                    currentDate.setDate(currentDate.getDate() + 1);
-                }
-
-                datumSelect.addEventListener("change", function () {
-                    const weekday = this.selectedOptions[0].dataset.weekday;
-                    updateDish(weekday);
-                });
-
-                if (datumSelect.options.length > 0) {
-                    datumSelect.selectedIndex = 0;
-                    updateDish(datumSelect.options[0].dataset.weekday);
-                }
-            });
-        </script>
     </div>
+
     <div class="hauptfeld-mitte">
         <h1>Vorbestellung</h1>
         <!-- Hier kommt der Speiseplan-Inhalt -->
@@ -139,7 +68,7 @@
         ✔️Abholung zwischen 12.00 und 14.00 Uhr. <br>
         ✔️Zahlung erfolgt online über Paypal oder bei Abholung über das Mensa-Guthaben. <br><br>
 
-        <div class="auswahlleiste" style="display: inline-flex; align-items: center; gap: 10px;">
+        <div class="auswahlleiste">
             Mensa wählen:
             <select>
                 <option value="Stadtmitte">Esslingen Stadtmitte</option>
@@ -152,8 +81,6 @@
             </select>
         </div>
 
-
-
         <div class="gerichtfenster">
             <img class="gerichtbild" src="img/currwurst.jpeg" alt="Gericht">
             <div class="gerichts-info">
@@ -161,36 +88,31 @@
                     <span id="gericht-name">Currywurst mit Pommes</span>
                     <span id="gericht-preis" class="preis">4,10 €</span>
                 </div>
-                <button class="gerichthinzu-button">Zur Bestellung hinzufügen</button>
+                <button type="button" class="gerichthinzu-button" id="add-order-button">Zur Bestellung
+                    hinzufügen</button>
             </div>
         </div>
-
-
-
 
 
     </div>
 
     <div class="bestellfenster">
         Ihre Vorbestellung: <br><br>
-        <div class="bestellfensterfenster">
+        <div class="bestellfensterfenster" id="order-list">
             <div class="bestell-zeile">
-                <span>Currywurst mit Pommes</span>
-                <span class="preis">4,10 €</span>
-            </div>
-            <div class="bestell-zeile">
-                <span>Pasta Pesto</span>
-                <span class="preis">5,20 €</span>
-            </div>
-            <div class="bestell-zeile gesamt">
-                <span>Gesamt</span>
-                <span class="preis">9,30 €</span>
+                Noch keine Vorbestellung.
             </div>
         </div>
+        <div class="bestell-zeile gesamt">
+            <span>Gesamt</span>
+            <span id="order-total" class="preis">0,00 €</span>
+        </div>
 
-        <button class="vorbestellung-button">Auswahl abschließen</button>
+        <button class="vorbestellung-button" type="button">Auswahl abschließen</button>
 
     </div>
+
+    <script src="script-Vorbestellungen.js"></script>
 
     <div class="fußzeile">
         (c) 2026 Hochschule Esslingen - Mensa Vorbestellung | <a href="Datenschutz.html">Datenschutz</a> | <a
