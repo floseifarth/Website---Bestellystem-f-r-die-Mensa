@@ -121,26 +121,61 @@
           text-decoration: none;
       }
 
+/* ================= FOOTER FINAL ================= */
+.fußzeile {
+    position: fixed;
+    bottom: 10px;
+
+    left: 0;        /* weiter nach links (an Sidebar angepasst) */
+    
+    font-size: 6px;    /* noch kleiner */
+    color: #888;        /* dezenter */
+
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fußzeile a:hover {
+    text-decoration: underline;
+    color: #444;
+}
+
+      
+
+   /* ================= HEADER DESIGN ================= */
+/* Der Header ist der obere Bereich mit Logo + Titel */
+.header {
+    display: flex;              /* Elemente nebeneinander (Logo + Text) */
+    align-items: center;        /* Vertikal mittig ausrichten */
+    gap: 25px;                  /* Abstand zwischen Logo und Text */
+    padding: 20px 40px;         /* Innenabstand oben/unten und links/rechts */
+    
+    background-color: white;    /* Hintergrundfarbe */
+    border-bottom: 2px solid #eee; /* leichte Linie unten für Trennung */
+}
 
 
-      .fußzeile {
-          position: fixed;
-          left: 350px;
-          right: 10px;
-          bottom: 10px;
-          display: flex;
-          align-items: center;
+/* ================= LOGO ================= */
+/* Styling für das Logo-Bild */
+.logo {
+    width: 160px;   /* Größe des Logos (kannst du anpassen) */
+    height: auto;   /* Höhe passt sich automatisch an */
+}
 
-          padding: 12px 16px;
-          font-size: 12px;
-          color: #525252;
-      }
 
-      .fußzeile a {
-          color: inherit;
-          text-decoration: none;
-      }
+/* Hover-Effekt für das Logo */
+/* Wenn man mit der Maus drüber geht */
+.logo:hover {
+    transform: scale(1.05); /* leichtes Vergrößern */
+    transition: 0.3s;       /* Animation weich machen */
+}
 
-      .fußzeile a:hover {
-          text-decoration: underline;
-      }
+
+/* ================= TITEL ================= */
+/* Styling für die Überschrift neben dem Logo */
+.header h1 {
+    font-size: 32px;        /* Schriftgröße */
+    font-weight: 600;       /* etwas fetter */
+    color: #333;            /* dunkles Grau statt schwarz (moderner) */
+}
