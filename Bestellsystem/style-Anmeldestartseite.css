@@ -119,6 +119,15 @@
 
       .startseite-button {
           text-decoration: none;
+          color: white;
+          font-size: 14px;
+          width: 20%;
+          background-color: #5757f2;
+          padding: 8px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
       }
 
       .SSO-Bild {

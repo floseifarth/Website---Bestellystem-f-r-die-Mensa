@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anmeldeseite</title>
+
+    <!-- Einkopieren der Schriftart -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style-SignUp.css">
+</head>
+
+<body>
+    <div class="anmelde-container">
+        <img class="logo" src="img/HochschuleEsslingen.svg" alt="">
+
+        <p>
+            Sehr geeherter Herr Mustermann, <br><br>
+
+            vielen Dank, dass Sie sich für die Anmeldung zum Bestellsystem der Mensa der
+            Hochschule Esslingen entschieden haben.<br><br>
+
+            Da im Rahmen der Nutzung sensible Daten verarbeitet werden, bitte wir Sie, ihre Identität zu bestätigen.
+            <br><br>
+            Wenn Sie den untenstehenden Button klicken, erhalten Sie eine E-Mail an ihre Studierendenadresse mit einem
+            6-stelligen Code.
+            Diesen Code geben Sie bitte in das untenstehende Feld ein:
+        </p>
+
+        <div class="pin-wrapper">
+            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        </div>
+        <button class="anmelde-button" type="button">Code bestätigen</button>
+
+        <br><br>
+        <p>
+            Sollten Sie den Code nicht erhalten haben, überprüfen Sie bitte Ihren Spam-Ordner oder klicken Sie auf den
+            Button, um einen neuen Code anzufordern.
+        </p>
+        <button class="anmelde-button" type="button">Neuen Code anfordern</button>
+
+
+    </div>
+
+    <div class="fußzeile">
+        <a href="#">© Hochschule Esslingen - University of Applied Sciences 2025</a>
+    </div>
+    <br>
+    <div class="fußzeile-links">
+        <a href="Datenschutz.html">Impressum</a> | <a href="Impressum.html">AGB</a> | <a
+            href="Kontakt.html">Datenschutz</a>
+    </div>
+</body>
+
+<script type="module" src="script-SignUp.js"></script>
+
+</html>
