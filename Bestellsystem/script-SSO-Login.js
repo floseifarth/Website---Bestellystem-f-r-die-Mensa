@@ -103,4 +103,18 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+    // Passwort anzeigen/verbergen per Auge-Button.
+    const showPasswordButton = document.getElementById("show-password");
+    if (showPasswordButton && passwordInput) {
+        showPasswordButton.addEventListener("click", function () {
+            const isHidden = passwordInput.type === "password";
+            passwordInput.type = isHidden ? "text" : "password";
+            const eyeImg = showPasswordButton.querySelector("img");
+            if (eyeImg) {
+                eyeImg.src = isHidden ? "img/eye-off-icon.svg" : "img/eye-icon.svg";
+                eyeImg.alt = isHidden ? "Passwort verbergen" : "Passwort anzeigen";
+            }
+        });
+    }
 });
