@@ -28,8 +28,12 @@
             <br><br>
             Wenn Sie den untenstehenden Button klicken, erhalten Sie eine E-Mail an ihre Studierendenadresse mit einem
             6-stelligen Code.
+            <button id="btn-code-anfordern" class="anmelde-button" type="button">Code anfordern</button>
+            <br><br>
             Diesen Code geben Sie bitte in das untenstehende Feld ein:
         </p>
+
+        <p id="signup-message" style="font-size: 13px; text-align: center; min-height: 1.2em;"></p>
 
         <div class="pin-wrapper">
             <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
@@ -39,14 +43,14 @@
             <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
             <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
         </div>
-        <button class="anmelde-button" type="button">Code bestätigen</button>
+        <button id="btn-code-bestaetigen" class="anmelde-button" type="button">Code bestätigen</button>
 
         <br><br>
         <p>
             Sollten Sie den Code nicht erhalten haben, überprüfen Sie bitte Ihren Spam-Ordner oder klicken Sie auf den
             Button, um einen neuen Code anzufordern.
         </p>
-        <button class="anmelde-button" type="button">Neuen Code anfordern</button>
+        <button id="btn-code-neu" class="anmelde-button" type="button">Neuen Code anfordern</button>
 
 
     </div>

@@ -43,7 +43,7 @@ async function login() {
 
         const { data: student, error: studentError } = await supabase
             .from("StudentenHochschule")
-            .select("RZ-Kennung")
+            .select("RZ-Kennung, E-Mail")
             .ilike("RZ-Kennung", username)
             .maybeSingle();
 
@@ -60,7 +60,7 @@ async function login() {
         // Schritt 3: Pruefen, ob die Person bereits in "RegistriertePersonen" registriert ist.
         const { data: person, error: personError } = await supabase
             .from("RegistriertePersonen")
-            .select("RZ-Kennung")
+            .select("RZ-Kennung, E-Mail")
             .ilike("RZ-Kennung", username)
             .maybeSingle();
 
@@ -69,8 +69,32 @@ async function login() {
             return;
         }
 
-        // Weiterleitung je nachdem, ob die Person bereits registriert ist oder nicht.
-        window.location.href = person ? "startseite.html" : "SignUp.html";
+        // Noch nicht registriert: zur SignUp-Seite weiterleiten.
+        if (!person) {
+            window.location.href = "SignUp.html?username=" + encodeURIComponent(username);
+            return;
+        }
+
+        // Registriert: E-Mail bestimmen und Passwort ueber Supabase Auth pruefen.
+        const emailForLogin = person["E-Mail"] || student["E-Mail"];
+        if (!emailForLogin) {
+            setMessage("Für diesen Benutzer ist keine E-Mail hinterlegt.", true);
+            return;
+        }
+
+        setMessage("Anmeldedaten werden geprueft...", false);
+
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+            email: emailForLogin,
+            password
+        });
+
+        if (loginError) {
+            setMessage("Login fehlgeschlagen: " + loginError.message, true);
+            return;
+        }
+
+        window.location.href = "startseite.html";
         return;
     } catch (error) {
         setMessage("Unerwarteter Fehler: " + (error?.message || String(error)), true);
