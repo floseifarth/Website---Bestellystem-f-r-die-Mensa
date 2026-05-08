@@ -11,69 +11,70 @@ function setMessage(text, isError) {
     // Textinhalt der Nachricht setzen.
     messageElement.textContent = text;
     // Farblich zwischen Fehler und Erfolg unterscheiden.
-    // messageElement.style.color = isError ? "#b42318" : "#027a48";
+    messageElement.style.color = isError ? "#b42318" : "#027a48";
 }
 
 
 // Fuehrt den eigentlichen Login-Prozess aus.
 async function login() {
-    // Eingabefelder fuer Benutzername und Passwort aus dem DOM lesen.
-    const usernameElement = document.getElementById("login-username");
-    const passwordElement = document.getElementById("login-password");
+    try {
+        // Eingabefelder fuer Benutzername und Passwort aus dem DOM lesen.
+        const usernameElement = document.getElementById("login-username");
+        const passwordElement = document.getElementById("login-password");
 
-    // Falls Felder nicht gefunden werden, Abbruch ohne Fehler.
-    if (!usernameElement || !passwordElement) {
+        // Falls Felder nicht gefunden werden, sichtbare Rueckmeldung geben.
+        if (!usernameElement || !passwordElement) {
+            setMessage("Login-Formular konnte nicht geladen werden.", true);
+            return;
+        }
+
+        // Benutzerwerte einlesen (Leerzeichen am Rand entfernen).
+        const username = usernameElement.value.trim();
+        const password = passwordElement.value;
+
+        // Schritt 1: Pflichtfeld-Pruefung – beide Felder muessen ausgefuellt sein.
+        if (!username || !password) {
+            setMessage("Bitte Benutzername und Passwort eingeben.", true);
+            return;
+        }
+
+        // Schritt 2: Pruefen, ob die Person in der Hochschul-Datenbank "StudentenHochschule" existiert.
+        setMessage("Hochschul-Daten werden geprueft...", false);
+
+        const { data: student, error: studentError } = await supabase
+            .from("StudentenHochschule")
+            .select("RZ-Kennung")
+            .ilike("RZ-Kennung", username)
+            .maybeSingle();
+
+        if (studentError) {
+            setMessage("Fehler bei der Datenbankabfrage: " + studentError.message, true);
+            return;
+        }
+
+        if (!student) {
+            setMessage("Dieser Benutzername ist nicht in der Hochschuldatenbank vorhanden.", true);
+            return;
+        }
+
+        // Schritt 3: Pruefen, ob die Person bereits in "RegistriertePersonen" registriert ist.
+        const { data: person, error: personError } = await supabase
+            .from("RegistriertePersonen")
+            .select("RZ-Kennung")
+            .ilike("RZ-Kennung", username)
+            .maybeSingle();
+
+        if (personError) {
+            setMessage("Fehler bei der Datenbankabfrage: " + personError.message, true);
+            return;
+        }
+
+        // Weiterleitung je nachdem, ob die Person bereits registriert ist oder nicht.
+        window.location.href = person ? "startseite.html" : "SignUp.html";
         return;
+    } catch (error) {
+        setMessage("Unerwarteter Fehler: " + (error?.message || String(error)), true);
     }
-
-    // Benutzerwerte einlesen (Benutzername mit trim, um Leerzeichen am Rand zu entfernen).
-    const username = usernameElement.value.trim();
-    const password = passwordElement.value;
-
-    // Schritt 1: Pflichtfeld-Pruefung – beide Felder muessen ausgefuellt sein.
-    if (!username || !password) {
-        setMessage("Bitte Benutzername und Passwort eingeben.", true);
-        return;
-    }
-
-    // Schritt 2: Pruefen, ob die Person in der Hochschul-Datenbank "StudentenHochschule" existiert.
-    setMessage("Hochschul-Daten werden geprueft...", false);
-
-    const { data: student, error: studentError } = await supabase
-        .from("StudentenHochschule")
-        .select("RZ-Kennung")
-        .eq("RZ-Kennung", username)
-        .maybeSingle();
-
-    if (studentError) {
-        setMessage("Fehler bei der Datenbankabfrage: " + studentError.message, true);
-        return;
-    }
-
-    if (!student) {
-        setMessage("Dieser Benutzername ist nicht in der Hochschuldatenbank vorhanden.", true);
-        return;
-    }
-
-    // Schritt 3: Pruefen, ob die Person bereits in "RegistriertePersonen" registriert ist.
-    const { data: person, error: personError } = await supabase
-        .from("RegistriertePersonen")
-        .select("RZ-Kennung")
-        .eq("RZ-Kennung", username)
-        .maybeSingle();
-
-    if (personError) {
-        setMessage("Fehler bei der Datenbankabfrage: " + personError.message, true);
-        return;
-    }
-
-    if (!person) {
-        setMessage("Dieser Benutzername ist nicht registriert.", true);
-        return;
-    }
-
-    // Person in beiden Tabellen gefunden – naechste Schritte folgen.
-    setMessage("Benutzer gefunden. Weiter...", false);
 }
 
 // Wartet, bis das HTML vollstaendig geladen ist,
@@ -101,6 +102,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
     // Passwort anzeigen/verbergen per Auge-Button.
     const showPasswordButton = document.getElementById("show-password");
     if (showPasswordButton && passwordInput) {
