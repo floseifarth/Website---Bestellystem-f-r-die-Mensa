@@ -15,59 +15,65 @@ function setMessage(text, isError) {
 }
 
 
-let istRegistrierung = false; // Lokaler Zustand, um zwischen Anmelde- und Registrierungsmodus zu wechseln.
-// Wechselt zwischen Anmelde- und Registrierungsmodus.
-function toggleRegistrierung() {
-    istRegistrierung = !istRegistrierung;
-    const anzeige = istRegistrierung ? "block" : "none";
-    document.getElementById("login-name").style.display = anzeige;
-    document.getElementById("login-password-confirm").style.display = anzeige;
-
-    document.getElementById("login-button").textContent = istRegistrierung ? "Registrieren" : "Anmelden";
-    document.getElementById("register-toggle").textContent = istRegistrierung ? "Zurück zum Login" : "Neu registrieren";
-}
-
-
 // Fuehrt den eigentlichen Login-Prozess aus.
 async function login() {
-    // Eingabefelder fuer E-Mail und Passwort aus dem DOM lesen.
-    const emailElement = document.getElementById("login-email");
+    // Eingabefelder fuer Benutzername und Passwort aus dem DOM lesen.
+    const usernameElement = document.getElementById("login-username");
     const passwordElement = document.getElementById("login-password");
 
     // Falls Felder nicht gefunden werden, Abbruch ohne Fehler.
-    if (!emailElement || !passwordElement) {
+    if (!usernameElement || !passwordElement) {
         return;
     }
 
-    // Benutzerwerte einlesen (E-Mail mit trim, um Leerzeichen am Rand zu entfernen).
-    const email = emailElement.value.trim();
+    // Benutzerwerte einlesen (Benutzername mit trim, um Leerzeichen am Rand zu entfernen).
+    const username = usernameElement.value.trim();
     const password = passwordElement.value;
 
-    // Einfache Pflichtfeld-Pruefung vor dem API-Aufruf.
-    if (!email || !password) {
-        setMessage("Bitte E-Mail und Passwort eingeben.", true);
+    // Schritt 1: Pflichtfeld-Pruefung – beide Felder muessen ausgefuellt sein.
+    if (!username || !password) {
+        setMessage("Bitte Benutzername und Passwort eingeben.", true);
         return;
     }
 
-    // Info an den Nutzer: Login wird gerade geprueft.
-    setMessage("Anmeldung wird geprueft...", false);
+    // Schritt 2: Pruefen, ob die Person in der Hochschul-Datenbank "StudentenHochschule" existiert.
+    setMessage("Hochschul-Daten werden geprueft...", false);
 
-    // Login-Anfrage an Supabase Auth schicken.
-    // Bei Erfolg kommt eine Session zurueck, bei Fehler ist `error` gesetzt.
-    const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-    });
+    const { data: student, error: studentError } = await supabase
+        .from("StudentenHochschule")
+        .select("RZ-Kennung")
+        .eq("RZ-Kennung", username)
+        .maybeSingle();
 
-    // Fehlerfall: Fehlermeldung anzeigen und Funktion beenden.
-    if (error) {
-        setMessage("Login fehlgeschlagen: " + error.message, true);
+    if (studentError) {
+        setMessage("Fehler bei der Datenbankabfrage: " + studentError.message, true);
         return;
     }
 
-    // Erfolgsfall: Erfolgsmeldung anzeigen und auf Startseite weiterleiten.
-    setMessage("Login erfolgreich. Weiterleitung...", false);
-    window.location.href = "Startseite.html";
+    if (!student) {
+        setMessage("Dieser Benutzername ist nicht in der Hochschuldatenbank vorhanden.", true);
+        return;
+    }
+
+    // Schritt 3: Pruefen, ob die Person bereits in "RegistriertePersonen" registriert ist.
+    const { data: person, error: personError } = await supabase
+        .from("RegistriertePersonen")
+        .select("RZ-Kennung")
+        .eq("RZ-Kennung", username)
+        .maybeSingle();
+
+    if (personError) {
+        setMessage("Fehler bei der Datenbankabfrage: " + personError.message, true);
+        return;
+    }
+
+    if (!person) {
+        setMessage("Dieser Benutzername ist nicht registriert.", true);
+        return;
+    }
+
+    // Person in beiden Tabellen gefunden – naechste Schritte folgen.
+    setMessage("Benutzer gefunden. Weiter...", false);
 }
 
 // Wartet, bis das HTML vollstaendig geladen ist,
@@ -77,22 +83,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const loginButton = document.getElementById("login-button");
     const passwordInput = document.getElementById("login-password");
 
-    // Klick auf den Login-Button startet Login oder Registrierung je nach Modus.
+    // Klick auf den Login-Button startet den Login.
     if (loginButton) {
         loginButton.addEventListener("click", function () {
-            if (istRegistrierung) {
-                register();
-            } else {
-                login();
-            }
+            login();
         });
     }
 
-    // Klick auf "Neu registrieren" schaltet den Registrierungsmodus um.
-    const registerToggle = document.getElementById("register-toggle");
-    if (registerToggle) {
-        registerToggle.addEventListener("click", toggleRegistrierung);
-    }
+
 
     // Enter im Passwortfeld startet ebenfalls den Login.
     if (passwordInput) {
@@ -103,7 +101,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-
     // Passwort anzeigen/verbergen per Auge-Button.
     const showPasswordButton = document.getElementById("show-password");
     if (showPasswordButton && passwordInput) {
