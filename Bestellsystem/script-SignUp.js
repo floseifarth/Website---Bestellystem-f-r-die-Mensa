@@ -118,19 +118,6 @@ async function codeBestaetigen() {
             return;
         }
 
-        // Passwort nur in Supabase Auth setzen (nicht in RegistriertePersonen speichern).
-        const authPassword = String(studentRow.Passwort ?? studentRow.password ?? "").trim();
-        if (authPassword) {
-            const { error: updateAuthError } = await supabase.auth.updateUser({
-                password: authPassword
-            });
-
-            if (updateAuthError) {
-                setMessage("Code korrekt, aber Passwort konnte nicht gesetzt werden: " + updateAuthError.message, true);
-                return;
-            }
-        }
-
         // Nicht alle Felder aus StudentenHochschule sind fuer RegistriertePersonen geeignet.
         // Passwort-Felder werden hier explizit ausgeschlossen.
         const personRow = { ...studentRow };
