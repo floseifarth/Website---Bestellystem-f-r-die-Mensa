@@ -56,20 +56,6 @@
                 <span>Hallo <span id="user-display-name">...</span></span>
             </div>
         </div>
-
-        <script>
-            let heute = new Date();
-
-            let tage = [
-                "Sonntag", "Montag", "Dienstag",
-                "Mittwoch", "Donnerstag", "Freitag", "Samstag"
-            ];
-
-            let wochentag = tage[heute.getDay()];
-            let datum = heute.toLocaleDateString("de-DE");
-
-            document.getElementById("datum").innerText = wochentag + ", " + datum;
-        </script>
     </div>
     <div class="hauptfeld-mitte">
         <h1>Meine Bestellungen</h1>

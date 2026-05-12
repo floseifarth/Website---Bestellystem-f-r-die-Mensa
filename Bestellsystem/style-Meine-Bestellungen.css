@@ -105,10 +105,11 @@
 
           /* background-color: #e5e5fa; */
           border-radius: 8px;
+          width: 800px;
 
           position: fixed;
           top: 100px;
-          left: 350px;
+          left: 300px;
           right: 10px;
           bottom: 0;
           padding: 20px;
@@ -186,7 +187,7 @@
           text-decoration: none;
       }
 
-      .vorbestell-btn:hover {
+      .vorbestell-btn:hover:not(:disabled) {
           opacity: 0.9;
           transform: scale(1.05);
       }

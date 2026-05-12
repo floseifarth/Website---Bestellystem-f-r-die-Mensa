@@ -75,44 +75,41 @@
                 <option value="Flandernstraße ">Flandernstraße</option> -->
                 <option value="Göppingen">Göppingen</option>
             </select>
-            Datum wählen:
-            <select id="datum-select">
-                <!-- Optionen werden per JavaScript generiert -->
-            </select>
+            <!-- Datum wählen: -->
+            <select id="datum-select"></select>
         </div>
 
-        <div class="speiseplan-eintrag">
-            <div class="speiseplan-links">
-                <h3 id="gericht-tag"></h3>
-                <p id="gericht-datum">07. April 2026</p>
-            </div>
+        <div id="speiseplan-container">
 
-            <div class="speiseplan-mitte">
-                <img src="img/currywurst.jpg" class="gericht-bild" alt="">
-                <p>Tagesangebot</p>
-                <h3 id="gericht-name"></h3>
-                <!-- <p class="icons">
-                    🐖 🌾
-                </p> -->
-
-                <p class="allergene">
-                    Allergene: Gluten, Senf
-                </p>
-                <div class="preise" id="preise-auswahl">
-                    <label><input type="radio" name="preis" value="stud"> Studierende: <strong
-                            id="preis-stud"></strong></label><br>
-                    <label><input type="radio" name="preis" value="bed"> Bedienstete: <strong
-                            id="preis-bed"></strong></label><br>
-                    <label><input type="radio" name="preis" value="guest"> Gäste: <strong
-                            id="preis-guest"></strong></label>
+            <div class="speiseplan-eintrag">
+                <div class="speiseplan-links">
+                    <h3 id="gericht-tag"></h3>
+                    <p id="gericht-datum"></p>
                 </div>
-            </div>
 
-            <div class="speiseplan-rechts">
-                <!-- <a id="add-order-button" class="vorbestell-btn">Zur Bestellung
-                    hinzufügen</a> -->
-                <button type="button" class="vorbestell-btn" id="add-order-button" disabled>Zur Bestellung
-                    hinzufügen</button>
+                <div class="speiseplan-mitte">
+                    <img src="img/Profil.svg" class="gericht-bild" alt="Gericht">
+                    <p>Tagesangebot</p>
+                    <h3 id="gericht-name"></h3>
+
+
+                    <p class="allergene">
+                        Allergene: keine Angabe
+                    </p>
+                    <div class="preise" id="preise-auswahl">
+                        <label><input type="radio" name="preis" value="stud"> Studierende: <strong
+                                id="preis-stud"></strong></label><br>
+                        <label><input type="radio" name="preis" value="bed"> Bedienstete: <strong
+                                id="preis-bed"></strong></label><br>
+                        <label><input type="radio" name="preis" value="guest"> Gäste: <strong
+                                id="preis-guest"></strong></label>
+                    </div>
+                </div>
+
+                <div class="speiseplan-rechts">
+                    <button type="button" class="vorbestell-btn" id="add-order-button" disabled>Zur Bestellung
+                        hinzufügen</button>
+                </div>
             </div>
         </div>
 

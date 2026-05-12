@@ -1,7 +1,32 @@
 import { supabase } from "./supabaseClient.js";
+const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
-document.addEventListener('DOMContentLoaded', async function () {
-    // Datum von heute einlesen und anzeigen
+async function ermittleVorname(user) {
+    const fullName = (user.user_metadata?.full_name || "").trim();
+    if (fullName) {
+        return fullName.split(/\s+/)[0];
+    }
+
+    const email = (user.email || "").trim();
+    if (!email) {
+        return "Gast";
+    }
+
+    const { data, error } = await supabase
+        .from("RegistriertePersonen")
+        .select("Vorname")
+        .ilike("E-Mail", email)
+        .maybeSingle();
+
+    if (!error && data?.Vorname) {
+        return data.Vorname;
+    }
+
+    return email;
+}
+
+document.addEventListener("DOMContentLoaded", async function () {
+    // Header-Datum initialisieren
     const heute = new Date();
 
     // Aktuelle Supabase-Session abrufen (gespeichert nach dem Login).
@@ -14,12 +39,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         return;
     }
 
-    // Anzeigenamen aus den User-Metadaten holen.
-
-    const displayName =
-        user.user_metadata?.full_name ||       // Alternativ: vollstaendiger Name
-        user.user_metadata?.display_name ||   // Benutzerdefinierter Anzeigename
-        user.email;                            // Fallback: E-Mail-Adresse
+    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
+    const displayName = await ermittleVorname(user);
 
     // Namen rechts oben im Profil-Bereich einsetzen.
     const nameElement = document.getElementById("user-display-name");
@@ -27,13 +48,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         nameElement.textContent = displayName;
     }
 
-    // Deutsche Wochentage im Array
-    const tage = [
-        "Sonntag", "Montag", "Dienstag",
-        "Mittwoch", "Donnerstag", "Freitag", "Samstag"
-    ];
 
-    const wochentag = tage[heute.getDay()];
+    const wochentag = WOCHENTAGE[heute.getDay()];
     const datum = heute.toLocaleDateString("de-DE");
 
     const datumElement = document.getElementById("datum");
@@ -41,17 +57,37 @@ document.addEventListener('DOMContentLoaded', async function () {
         datumElement.innerText = wochentag + ", " + datum;
     }
 
-    // Menüdaten für die Wochentage
-    const menuByDay = {
-        Montag: { name: "Pasta Pesto", priceStud: "5,20 €", priceBed: "6,50 €", priceGuest: "7,00 €", image: "img/pasta-pesto.jpeg", alt: "Pasta Pesto" },
-        Dienstag: { name: "Gericht2", priceStud: "4,10 €", priceBed: "5,00 €", priceGuest: "5,50 €", image: "img/currywurst.jpg", alt: "Currywurst mit Pommes" },
-        Mittwoch: { name: "Gericht3", priceStud: "4,10 €", priceBed: "5,00 €", priceGuest: "5,50 €", image: "img/currywurst.jpg", alt: "Currywurst mit Pommes" },
-        Donnerstag: { name: "Gebratener Lachs mit Gemüse", priceStud: "5,90 €", priceBed: "6,50 €", priceGuest: "7,00 €", image: "img/lachs.jpg", alt: "Gebratener Lachs mit Gemüse" },
-        Freitag: { name: "Currywurst mit Pommes", priceStud: "4,10 €", priceBed: "5,00 €", priceGuest: "5,50 €", image: "img/currywurst.jpg", alt: "Currywurst mit Pommes" }
-    };
-
     // Array für die aktuelle Bestellliste
     let orderItems = [];
+    let currentDish = null;
+
+    function getDishUiElements() {
+        return {
+            nameElement: document.getElementById("gericht-name"),
+            dishImage: document.querySelector(".gericht-bild"),
+            tagElement: document.getElementById("gericht-tag"),
+            gerichtDatumElement: document.getElementById("gericht-datum"),
+            studElement: document.getElementById("preis-stud"),
+            bedElement: document.getElementById("preis-bed"),
+            guestElement: document.getElementById("preis-guest"),
+            allergeneElement: document.querySelector(".allergene")
+        };
+    }
+
+    function setDishDateText(gerichtDatumElement, datumText) {
+        if (!gerichtDatumElement || !datumText) return;
+        const parts = datumText.split(", ");
+        gerichtDatumElement.innerText = parts[1] || datumText;
+    }
+
+    function resetPriceSelection() {
+        document.querySelectorAll('input[name="preis"]').forEach(radio => {
+            radio.checked = false;
+        });
+
+        const addBtn = document.getElementById("add-order-button");
+        if (addBtn) addBtn.disabled = true;
+    }
 
     // Den Textpreis wie "4,10 €" in eine Zahl wandeln
     function parsePrice(priceText) {
@@ -64,35 +100,110 @@ document.addEventListener('DOMContentLoaded', async function () {
         return amount.toFixed(2).replace(".", ",") + " €";
     }
 
-    // Aktuelles Gericht in der Vorschau aktualisieren
-    function updateDish(weekday, datumText) {
-        const dish = menuByDay[weekday] || menuByDay.Freitag;
-        const nameElement = document.getElementById("gericht-name");
-        const dishImage = document.querySelector(".gericht-bild");
-        const tagElement = document.getElementById("gericht-tag");
-        const datumElement = document.getElementById("gericht-datum");
-        const studElement = document.getElementById("preis-stud");
-        const bedElement = document.getElementById("preis-bed");
-        const guestElement = document.getElementById("preis-guest");
+    function toEuroText(priceValue) {
+        if (priceValue === null || priceValue === undefined || priceValue === "") {
+            return "-";
+        }
+        if (typeof priceValue === "number") {
+            return formatPrice(priceValue);
+        }
+        if (typeof priceValue === "string") {
+            return priceValue.includes("€") ? priceValue : `${priceValue} €`;
+        }
+        return String(priceValue);
+    }
+
+    function renderDish(dish, weekday, datumText) {
+        const {
+            nameElement,
+            dishImage,
+            tagElement,
+            gerichtDatumElement,
+            studElement,
+            bedElement,
+            guestElement,
+            allergeneElement
+        } = getDishUiElements();
 
         if (nameElement) nameElement.innerText = dish.name;
         if (studElement) studElement.innerText = dish.priceStud;
         if (bedElement) bedElement.innerText = dish.priceBed;
         if (guestElement) guestElement.innerText = dish.priceGuest;
         if (dishImage) {
-            dishImage.src = dish.image;
-            dishImage.alt = dish.alt;
+            if (dish.image) {
+                dishImage.src = dish.image;
+                dishImage.alt = dish.alt;
+            } else {
+                dishImage.removeAttribute("src");
+                dishImage.alt = "";
+            }
         }
         if (tagElement) tagElement.innerText = weekday;
-        if (datumElement && datumText) {
-            const parts = datumText.split(', ');
-            datumElement.innerText = parts[1] || datumText;
+        setDishDateText(gerichtDatumElement, datumText);
+        if (allergeneElement) {
+            allergeneElement.innerText = `Allergene: ${dish.allergene || "keine Angabe"}`;
         }
 
-        // Radio-Auswahl zurücksetzen und Button deaktivieren
-        document.querySelectorAll('input[name="preis"]').forEach(r => r.checked = false);
-        const addBtn = document.getElementById("add-order-button");
-        if (addBtn) addBtn.disabled = true;
+        resetPriceSelection();
+    }
+
+    function clearDish(weekday, datumText) {
+        const {
+            nameElement,
+            dishImage,
+            tagElement,
+            gerichtDatumElement,
+            studElement,
+            bedElement,
+            guestElement,
+            allergeneElement
+        } = getDishUiElements();
+
+        if (nameElement) nameElement.innerText = "";
+        if (studElement) studElement.innerText = "";
+        if (bedElement) bedElement.innerText = "";
+        if (guestElement) guestElement.innerText = "";
+        if (dishImage) {
+            dishImage.removeAttribute("src");
+            dishImage.alt = "";
+        }
+        if (tagElement) tagElement.innerText = weekday;
+        setDishDateText(gerichtDatumElement, datumText);
+        if (allergeneElement) {
+            allergeneElement.innerText = "";
+        }
+
+        resetPriceSelection();
+    }
+
+    // Lädt genau ein Gericht für das gewählte Ausgabedatum.
+    async function ladeGerichtFuerDatum(isoDate, weekday, datumText) {
+        const { data, error } = await supabase
+            .from("Speiseplan")
+            .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstete, PreisGast, image_url")
+            .eq("Ausgabedatum", isoDate)
+            .limit(1)
+            .maybeSingle();
+
+        if (error) {
+            console.error("Fehler beim Laden der Vorbestellungs-Gerichte:", error);
+        }
+
+        if (data) {
+            currentDish = {
+                name: data.Gerichtname || "Unbenanntes Gericht",
+                priceStud: toEuroText(data.PreisStudierende),
+                priceBed: toEuroText(data.PreisBedienstete),
+                priceGuest: toEuroText(data.PreisGast),
+                image: data.image_url || "",
+                alt: data.Gerichtname || "Gericht",
+                allergene: data.Allergene || "keine Angabe"
+            };
+            renderDish(currentDish, weekday, datumText);
+        } else {
+            currentDish = null;
+            clearDish(weekday, datumText);
+        }
     }
 
     // Bestellübersicht rechts neu zeichnen
@@ -143,14 +254,17 @@ document.addEventListener('DOMContentLoaded', async function () {
         const datumSelect = document.getElementById("datum-select");
         const itemElement = document.querySelector(".gericht-bild");
         const selectedRadio = document.querySelector('input[name="preis"]:checked');
-        if (!nameElement || !datumSelect || !selectedRadio) return;
+        if (!nameElement || !datumSelect || !selectedRadio || !currentDish) return;
 
-        const weekday = datumSelect.selectedOptions[0]?.dataset.weekday;
-        const dish = menuByDay[weekday] || menuByDay.Freitag;
-        const priceMap = { stud: dish.priceStud, bed: dish.priceBed, guest: dish.priceGuest };
+        const priceMap = { stud: currentDish.priceStud, bed: currentDish.priceBed, guest: currentDish.priceGuest };
         const categoryMap = { stud: "Studierende", bed: "Bedienstete", guest: "Gäste" };
         const selectedPrice = priceMap[selectedRadio.value];
         const selectedCategory = categoryMap[selectedRadio.value];
+
+        if (!selectedPrice || selectedPrice === "-") {
+            alert("Für diese Kategorie ist aktuell kein Preis hinterlegt.");
+            return;
+        }
 
         const selectedDate = datumSelect.selectedOptions[0]?.textContent || datum;
 
@@ -169,6 +283,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Datumsauswahl mit den nächsten 14 Werktagen befüllen
     const datumSelect = document.getElementById("datum-select");
     if (datumSelect) {
+        datumSelect.innerHTML = "";
         const startDate = new Date();
         startDate.setDate(startDate.getDate() + 14);
 
@@ -178,7 +293,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         while (addedDays < 14) {
             const dayOfWeek = currentDate.getDay();
             if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                const tagName = tage[dayOfWeek];
+                const tagName = WOCHENTAGE[dayOfWeek];
                 const datumString = currentDate.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
                 const option = document.createElement("option");
                 option.value = currentDate.toISOString().split('T')[0];
@@ -190,17 +305,22 @@ document.addEventListener('DOMContentLoaded', async function () {
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        datumSelect.addEventListener("change", function () {
+        datumSelect.addEventListener("change", async function () {
             const weekday = this.selectedOptions[0]?.dataset.weekday;
             const datumText = this.selectedOptions[0]?.textContent;
-            if (weekday) {
-                updateDish(weekday, datumText);
+            const isoDate = this.selectedOptions[0]?.value;
+            if (weekday && isoDate) {
+                await ladeGerichtFuerDatum(isoDate, weekday, datumText);
             }
         });
 
         if (datumSelect.options.length > 0) {
             datumSelect.selectedIndex = 0;
-            updateDish(datumSelect.options[0].dataset.weekday, datumSelect.options[0].textContent);
+            await ladeGerichtFuerDatum(
+                datumSelect.options[0].value,
+                datumSelect.options[0].dataset.weekday,
+                datumSelect.options[0].textContent
+            );
         }
     }
 
