@@ -7,6 +7,16 @@ const username = urlParams.get("username") || "";
 // Speichert die E-Mail, die aus der Datenbank geladen wurde.
 let verifiedEmail = null;
 
+// Setzt den Nachnamen in der Anrede auf der Seite.
+function setGreetingLastName(lastName) {
+    const lastNameElement = document.getElementById("signup-lastname");
+    if (!lastNameElement) return;
+    const safeLastName = (lastName || "").trim();
+    if (safeLastName) {
+        lastNameElement.textContent = safeLastName;
+    }
+}
+
 // Zeigt eine Meldung auf der Seite an.
 function setMessage(text, isError) {
     const messageElement = document.getElementById("signup-message");
@@ -32,6 +42,21 @@ async function getEmailFromHochschule() {
     }
 
     return data["E-Mail"];
+}
+
+// Liest den Nachnamen eines Benutzers aus StudentenHochschule.
+async function getLastNameFromHochschule() {
+    const { data, error } = await supabase
+        .from("StudentenHochschule")
+        .select("Nachname")
+        .ilike("RZ-Kennung", username)
+        .maybeSingle();
+
+    if (error) {
+        throw new Error("Fehler bei der Nachnamen-Abfrage: " + error.message);
+    }
+
+    return (data?.Nachname || "").trim();
 }
 
 // Liest die E-Mail des Benutzers aus StudentenHochschule und sendet den OTP-Code.
@@ -158,6 +183,17 @@ async function codeBestaetigen() {
             }
         }
 
+        // Passwort aus StudentenHochschule in Supabase Auth setzen,
+        // damit der spätere Login mit RZ-Kennung + Passwort funktioniert.
+        const hochschulePasswort = studentRow.Passwort || studentRow.password;
+        if (hochschulePasswort) {
+            const { error: pwError } = await supabase.auth.updateUser({ password: hochschulePasswort });
+            if (pwError) {
+                setMessage("Registrierung OK, aber Passwort konnte nicht gesetzt werden: " + pwError.message, true);
+                return;
+            }
+        }
+
         setMessage("Code bestätigt. Registrierung abgeschlossen. Weiterleitung...", false);
         window.location.href = "startseite.html";
     } catch (error) {
@@ -167,6 +203,16 @@ async function codeBestaetigen() {
 
 
 document.addEventListener("DOMContentLoaded", function () {
+    if (username) {
+        getLastNameFromHochschule()
+            .then((lastName) => {
+                if (lastName) setGreetingLastName(lastName);
+            })
+            .catch(() => {
+                // Bei Fehler bleibt der Platzhaltername bestehen.
+            });
+    }
+
     const inputs = Array.from(document.querySelectorAll(".pin-input"));
 
     inputs.forEach((input, index) => {
