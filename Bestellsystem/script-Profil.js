@@ -1,5 +1,32 @@
 import { supabase } from "./supabaseClient.js";
 
+async function ermittleVorname(user) {
+    const fullName = (user.user_metadata?.full_name || "").trim();
+    if (fullName) {
+        return fullName.split(/\s+/)[0];
+    }
+
+    const email = (user.email || "").trim();
+    if (email) {
+        const { data, error } = await supabase
+            .from("RegistriertePersonen")
+            .select("Vorname")
+            .ilike("E-Mail", email)
+            .maybeSingle();
+
+        if (error) {
+            console.warn("Vorname konnte nicht aus RegistriertePersonen geladen werden:", error.message);
+        } else {
+            const vornameDb = (data?.Vorname || "").trim();
+            if (vornameDb) {
+                return vornameDb;
+            }
+        }
+    }
+
+    return "Gast";
+}
+
 function escapeHtml(value) {
     return String(value)
         .replace(/&/g, "&amp;")
@@ -13,6 +40,16 @@ function formatValue(value) {
     if (value === null || value === undefined) return "-";
     const text = String(value).trim();
     return text ? escapeHtml(text) : "-";
+}
+
+async function abmelden() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        console.error("Abmelden fehlgeschlagen:", error);
+        return;
+    }
+
+    window.location.href = "Anmeldestartseite.html";
 }
 
 function renderProfile(profileData, user) {
@@ -97,17 +134,18 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // Anzeigenamen aus den User-Metadaten holen.
-
-    const displayName =
-        user.user_metadata?.full_name ||       // Alternativ: vollstaendiger Name
-        user.user_metadata?.display_name ||   // Benutzerdefinierter Anzeigename
-        user.email;                            // Fallback: E-Mail-Adresse
+    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
+    const displayName = await ermittleVorname(user);
 
     // Namen rechts oben im Profil-Bereich einsetzen.
     const nameElement = document.getElementById("user-display-name");
     if (nameElement) {
         nameElement.textContent = displayName;
+    }
+
+    const logoutButton = document.getElementById("btn-abmelden");
+    if (logoutButton) {
+        logoutButton.addEventListener("click", abmelden);
     }
 
     await ladeProfildaten(user);

@@ -117,6 +117,20 @@
           margin-bottom: 20px;
       }
 
+      .abmelden-button {
+          display: inline-block;
+          background: linear-gradient(135deg, #6a5af9, #8b7bff);
+          border: none;
+          padding: 10px 18px;
+          border-radius: 10px;
+          color: white;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-top: 12px;
+          text-decoration: none;
+      }
+
       .fußzeile {
           position: fixed;
           left: 350px;

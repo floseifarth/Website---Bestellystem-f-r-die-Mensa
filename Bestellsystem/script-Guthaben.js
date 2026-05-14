@@ -1,5 +1,29 @@
 import { supabase } from "./supabaseClient.js";
 
+async function ermittleVorname(user) {
+    const fullName = (user.user_metadata?.full_name || "").trim();
+    if (fullName) {
+        return fullName.split(/\s+/)[0];
+    }
+
+    const email = (user.email || "").trim();
+    if (!email) {
+        return "Gast";
+    }
+
+    const { data, error } = await supabase
+        .from("RegistriertePersonen")
+        .select("Vorname")
+        .ilike("E-Mail", email)
+        .maybeSingle();
+
+    if (!error && data?.Vorname) {
+        return data.Vorname;
+    }
+
+    return email;
+}
+
 // Seite ist bereit – Session und Name laden.
 document.addEventListener("DOMContentLoaded", async function () {
 
@@ -13,12 +37,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // Anzeigenamen aus den User-Metadaten holen.
-
-    const displayName =
-        user.user_metadata?.full_name ||       // Alternativ: vollstaendiger Name
-        user.user_metadata?.display_name ||   // Benutzerdefinierter Anzeigename
-        user.email;                            // Fallback: E-Mail-Adresse
+    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
+    const displayName = await ermittleVorname(user);
 
     // Namen rechts oben im Profil-Bereich einsetzen.
     const nameElement = document.getElementById("user-display-name");
