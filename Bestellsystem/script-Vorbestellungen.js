@@ -33,14 +33,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
 
-    // Kein eingeloggter User? Zurueck zur Anmeldeseite.
-    if (!user) {
-        window.location.href = "Anmeldestartseite.html";
-        return;
-    }
+    
 
     // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
-    const displayName = await ermittleVorname(user);
+    const displayName = user ? await ermittleVorname(user) : "Gast";
+
 
     // Namen rechts oben im Profil-Bereich einsetzen.
     const nameElement = document.getElementById("user-display-name");
