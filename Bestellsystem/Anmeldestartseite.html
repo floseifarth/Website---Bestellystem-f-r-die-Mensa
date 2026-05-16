@@ -15,100 +15,146 @@
 </head>
 
 <body>
-    <img class="logo" src="img/HochschuleEsslingen.svg" alt="">
-    <h1> Willkommen auf der Bestellwebsite der Hochschule Esslingen </h1>
 
-    <div class="menuleiste-links">
+    <!-- HEADER: Logo + Datum + Login -->
+    <header class="header">
+        <div class="header-logo-links">
+            <img class="logo-studierendenwerk" src="img/studierendenwerk-stuttgart.png"
+                alt="Studierendenwerk Stuttgart Logo">
+        </div>
+
+        <div class="header-rechts">
+            <img class="logo" src="img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+
+            <div class="datum">
+                <span id="datum"></span>
+
+                <div class="profile-box">
+                    <img class="profile-pic" src="img/Profil.svg" alt="Profilbild">
+                    <a id="user-display-name" href="Anmeldestartseite.html">Anmelden ...</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+    <!-- LINKE NAVIGATION -->
+    <nav class="menuleiste-links">
         <a class="active" href="Anmeldestartseite.html">
             <img class="menu-icon" src="img/haus.svg" alt="">
             Startseite
-        </a> <br>
+        </a>
+
         <a class="menu" href="Speiseplan.html">
             <img class="menu-icon" src="img/speise.svg" alt="">
             Speiseplan
-        </a> <br>
+        </a>
+
         <a class="menu" href="Vorbestellungen.html">
             <img class="menu-icon" src="img/shopping.svg" alt="">
             Vorbestellung
-        </a> <br>
+        </a>
+
         <a class="menu" href="Meine Bestellungen.html">
             <img class="menu-icon" src="img/Liste.svg" alt="">
             Meine Bestellungen
-        </a><br>
+        </a>
+
         <a class="menu" href="Guthaben.html">
             <img class="menu-icon" src="img/Karte.svg" alt="">
             Guthaben
-        </a><br>
+        </a>
+
         <a class="menu" href="QR-Code.html">
             <img class="menu-icon" src="img/QR-Code.svg" alt="">
             QR-Code
-        </a><br>
+        </a>
+
         <a class="menu" href="Profil.html">
             <img class="menu-icon" src="img/Profil.svg" alt="">
             Profil
-        </a><br>
-    </div>
+        </a>
+    </nav>
 
-    <div class="datum">
-        <div class="datum-row">
-            <p><span id="datum"></span></p>
-            <div class="profile-box">
-                <img class="profile-pic" src="img/Profil.svg" alt="Profilbild">
-                <a id="user-display-name" style="text-decoration: none;" href="Anmeldestartseite.html">Anmelden ...</a>
+    <!-- HAUPTINHALT -->
+    <main class="hauptfeld-mitte">
+
+        <section class="start-hero">
+            <div class="welcome-card">
+                <p class="kleiner-titel">STARTSEITE</p>
+
+                <h1>Willkommen auf der Bestellwebsite der Hochschule Esslingen</h1>
+
+                <div class="titel-linie"></div>
+
+                <p>
+                    Herzlich willkommen auf der Bestellwebsite der Hochschule Esslingen!
+                </p>
+
+                <p>
+                    Hier können Sie bequem Ihre Mahlzeiten vorbestellen, Ihren Speiseplan einsehen,
+                    Ihr Guthaben verwalten und Ihren persönlichen QR-Code abrufen.
+                </p>
+
+                <p>
+                    Nutzen Sie die Navigation auf der linken Seite, um zu den verschiedenen Funktionen zu gelangen.
+                </p>
+
+                <div class="hinweis-box">
+                    Wir wünschen Ihnen einen guten Appetit und viel Freude beim Bestellen!
+                </div>
             </div>
-        </div>
-        <script>
-            let heute = new Date();
 
-            let tage = [
-                "Sonntag", "Montag", "Dienstag",
-                "Mittwoch", "Donnerstag", "Freitag", "Samstag"
-            ];
+            <div class="campus-bild-box">
+                <img src="img/hochschule-goeppingen.jpg" alt="Hochschule Esslingen Standort Göppingen">
+            </div>
+        </section>
 
-            let wochentag = tage[heute.getDay()];
-            let datum = heute.toLocaleDateString("de-DE");
+        <section class="login-section">
+            <h2>Mit Hochschulaccount anmelden</h2>
 
-            document.getElementById("datum").innerText = wochentag + ", " + datum;
-        </script>
-    </div>
+            <p>
+                Bitte melden Sie sich mit Ihrem Hochschulaccount an, um alle Funktionen nutzen zu können.
+            </p>
 
+            <div class="Anmeldefenster">
+                <a href="SSO-Login.html">
+                    <img class="SSO-Bild" src="img/SSO-Login.png" alt="SSO Login">
+                </a>
 
-    <div class="hauptfeld-mitte">
-        <h1>Startseite</h1>
-        <!-- Hier kommt der Startseiten-Inhalt -->
-        Herzlichen Willkommen auf der Bestellwebsite der Hochschule Esslingen! <br><br>
-        Hier können Sie bequem Ihre Mahlzeiten vorbestellen, Ihren Speiseplan einsehen, Ihr Guthaben verwalten und Ihren
-        persönlichen QR-Code abrufen. <br><br>
-        Nutzen Sie die Navigation auf der linken Seite, um zu den verschiedenen Funktionen zu gelangen. <br><br>
-        Wir wünschen Ihnen einen guten Appetit und viel Freude beim Bestellen!
-        <br><br>
+                <a href="Extern-Login.html">
+                    <img class="SSO-Bild" src="img/Extern-Login.png" alt="Extern Login">
+                </a>
+            </div>
+        </section>
 
+    </main>
 
+    <!-- FUSSZEILE -->
+    <footer class="fußzeile">
+        (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
+        <a href="Datenschutz.html">Datenschutz</a> |
+        <a href="Impressum.html">Impressum</a> |
+        <a href="Kontakt.html">Kontakt</a>
+    </footer>
 
-        <p style="font-weight: bold;">Mit Hochschulaccount anmelden</p>
-        <!-- Für bereits registrierte Nutzer. <br> -->
-        Bitte melden Sie sich mit ihrem Hochschulaccount an, um alle Funktionen nutzen zu können. <br><br>
+    <!-- Datum Script -->
+    <script>
+        let heute = new Date();
 
+        let tage = [
+            "Sonntag", "Montag", "Dienstag",
+            "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+        ];
 
-        <div class="Anmeldefenster">
-            <a href="SSO-Login.html"> <img class="SSO-Bild" src="img/SSO-Login.png" alt="SSO Login"></a>
-            <br>
-            <a href="Extern-Login.html"> <img class="SSO-Bild" src="img/Extern-Login.png" alt="Extern Login"></a>
-        </div>
+        let wochentag = tage[heute.getDay()];
+        let datum = heute.toLocaleDateString("de-DE");
 
-    </div>
+        document.getElementById("datum").innerText = wochentag + ", " + datum;
+    </script>
 
+    <script type="module" src="script-Anmeldestartseite.js"></script>
 
-    </div>
-
-
-    <div class="fußzeile">
-        (c) 2026 Hochschule Esslingen - Mensa Vorbestellung | <a href="Datenschutz.html">Datenschutz</a> | <a
-            href="Impressum.html">Impressum</a> | <a href="Kontakt.html">Kontakt</a>
-
-    </div>
 </body>
-
-<script type="module" src="script-Anmeldestartseite.js"></script>
 
 </html>

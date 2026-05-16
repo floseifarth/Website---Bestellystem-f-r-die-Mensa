@@ -178,10 +178,19 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Lädt genau ein Gericht für das gewählte Ausgabedatum.
     async function ladeGerichtFuerDatum(isoDate, weekday, datumText) {
+        const nextDate = new Date(`${isoDate}T00:00:00`);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const nextYear = nextDate.getFullYear();
+        const nextMonth = String(nextDate.getMonth() + 1).padStart(2, "0");
+        const nextDay = String(nextDate.getDate()).padStart(2, "0");
+        const nextIsoDate = `${nextYear}-${nextMonth}-${nextDay}`;
+
         const { data, error } = await supabase
             .from("Speiseplan")
             .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstete, PreisGast, image_url")
-            .eq("Ausgabedatum", isoDate)
+            .gte("Ausgabedatum", isoDate)
+            .lt("Ausgabedatum", nextIsoDate)
+            .order("Ausgabedatum", { ascending: true })
             .limit(1)
             .maybeSingle();
 
@@ -296,7 +305,10 @@ document.addEventListener("DOMContentLoaded", async function () {
                 const tagName = WOCHENTAGE[dayOfWeek];
                 const datumString = currentDate.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
                 const option = document.createElement("option");
-                option.value = currentDate.toISOString().split('T')[0];
+                const year = currentDate.getFullYear();
+                const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+                const day = String(currentDate.getDate()).padStart(2, "0");
+                option.value = `${year}-${month}-${day}`;
                 option.textContent = `${tagName}, ${datumString}`;
                 option.dataset.weekday = tagName;
                 datumSelect.appendChild(option);
