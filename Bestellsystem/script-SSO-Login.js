@@ -43,7 +43,7 @@ async function login() {
 
         const { data: student, error: studentError } = await supabase
             .from("StudentenHochschule")
-            .select("RZ-Kennung, E-Mail")
+            .select('"RZ-Kennung", "E-Mail"')
             .ilike("RZ-Kennung", username)
             .maybeSingle();
 
@@ -60,7 +60,7 @@ async function login() {
         // Schritt 3: Pruefen, ob die Person bereits in "RegistriertePersonen" registriert ist.
         const { data: person, error: personError } = await supabase
             .from("RegistriertePersonen")
-            .select("RZ-Kennung, E-Mail")
+            .select('"RZ-Kennung", "E-Mail"')
             .ilike("RZ-Kennung", username)
             .maybeSingle();
 
