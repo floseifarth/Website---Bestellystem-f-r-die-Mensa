@@ -71,7 +71,7 @@ async function ladeGerichte() {
                 <p class="allergene">Allergene: ${gericht.Allergene || "keine Angabe"}</p>
                 <div class="preise">
                     <p>Studierende: <strong>${gericht.PreisStudierende}</strong></p>
-                    <p>Bedienstete: <strong>${gericht.PreisBedienstete}</strong></p>
+                    <p>Bedienstete: <strong>${gericht.PreisBedienstet}</strong></p>
                     <p>Gäste: <strong>${gericht.PreisGast}</strong></p>
                 </div>
             </div>
