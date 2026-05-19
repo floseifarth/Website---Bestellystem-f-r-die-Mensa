@@ -15,8 +15,26 @@
 </head>
 
 <body>
-    <img class="logo" src="img/HochschuleEsslingen.svg" alt="">
-    <h1> Willkommen auf der Bestellwebsite der Hochschule Esslingen </h1>
+    <!-- HEADER: Logo + Datum + Login -->
+    <header class="header">
+        <div class="header-logo-links">
+            <img class="logo-studierendenwerk" src="img/studierendenwerk-stuttgart.png"
+                alt="Studierendenwerk Stuttgart Logo">
+        </div>
+
+        <div class="header-rechts">
+            <img class="logo" src="img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+
+            <div class="datum">
+                <span id="datum"></span>
+
+                <div class="profile-box">
+                    <img class="profile-pic" src="img/Profil.svg" alt="Profilbild">
+                    <a id="user-display-name" href="Anmeldestartseite.html">Anmelden ...</a>
+                </div>
+            </div>
+        </div>
+    </header>
 
     <div class="menuleiste-links">
         <a class="active" href="Startseite.html">
@@ -49,28 +67,6 @@
         </a><br>
     </div>
 
-    <div class="datum">
-        <div class="datum-row">
-            <p><span id="datum"></span></p>
-            <div class="profile-box">
-                <img class="profile-pic" src="img/Profil.svg" alt="Profilbild">
-                <span>Hallo <span id="user-display-name">...</span></span>
-            </div>
-        </div>
-        <script>
-            let heute = new Date();
-
-            let tage = [
-                "Sonntag", "Montag", "Dienstag",
-                "Mittwoch", "Donnerstag", "Freitag", "Samstag"
-            ];
-
-            let wochentag = tage[heute.getDay()];
-            let datum = heute.toLocaleDateString("de-DE");
-
-            document.getElementById("datum").innerText = wochentag + ", " + datum;
-        </script>
-    </div>
 
 
     <div class="hauptfeld-mitte">
@@ -111,13 +107,34 @@
 
     </div>
 
-    <div class="fußzeile">
-        (c) 2026 Hochschule Esslingen - Mensa Vorbestellung | <a href="Datenschutz.html">Datenschutz</a> | <a
-            href="Impressum.html">Impressum</a> | <a href="Kontakt.html">Kontakt</a>
+    <!-- FUSSZEILE -->
+    <footer class="fußzeile">
+        (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
+        <a href="Datenschutz.html">Datenschutz</a> |
+        <a href="Impressum.html">Impressum</a> |
+        <a href="Kontakt.html">Kontakt</a>
+    </footer>
 
-    </div>
+    <!-- Datum Script -->
+    <script>
+        let heute = new Date();
+
+        let tage = [
+            "Sonntag", "Montag", "Dienstag",
+            "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+        ];
+
+        let wochentag = tage[heute.getDay()];
+        let datum = heute.toLocaleDateString("de-DE");
+
+        document.getElementById("datum").innerText = wochentag + ", " + datum;
+    </script>
+
+    <script type="module" src="script-Startseite.js"></script>
+
+
 </body>
 
-<script type="module" src="script-Startseite.js"></script>
+
 
 </html>

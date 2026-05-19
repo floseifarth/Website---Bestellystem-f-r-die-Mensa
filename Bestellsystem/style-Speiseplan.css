@@ -1,118 +1,118 @@
-body {
-    font-family: "Open Sans", sans-serif;
+/* Design für Anmeldestartseite */
 
-    padding-left: 0px;
-    padding-right: 30px;
+/* ALLGEMEIN */
+body {
+    margin: 0;
+    font-family: "Open Sans", Arial, sans-serif;
+    background-color: #f5f7fb;
+    color: #222;
+    padding-bottom: 60px;
 }
 
-h1 {
-    margin-top: 60px;
-    color: #525252;
+/* HEADER */
+.header {
+    height: clamp(70px, 9vw, 125px);
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 clamp(20px, 4vw, 55px);
+    border-bottom: 4px solid #159bd7;
+    box-shadow: 0 4px 18px rgba(13, 43, 82, 0.08);
+}
+
+.header-logo-links {
+    display: flex;
+    align-items: center;
+}
+
+.header-rechts {
+    display: flex;
+    align-items: center;
+    gap: 35px;
+}
+
+.logo-studierendenwerk {
+    width: clamp(200px, 25vw, 360px);
+    max-height: 105px;
+    object-fit: contain;
+    display: block;
 }
 
 .logo {
-    position: absolute;
-    left: 10px;
-    width: 100px;
-    top: 16px;
+    width: clamp(110px, 13vw, 185px);
+    height: auto;
+    display: block;
 }
 
-.menuleiste-links {
-    background-color: #e5e5fa;
-    border-radius: 8px;
-    width: 280px;
-    height: 100vh;
-    position: fixed;
-    top: 50;
-    left: 10px;
-}
-
-.menu {
-    color: rgba(38, 6, 244, 0.767);
-    text-decoration: none;
-    padding: 8px;
-    display: inline-block;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    margin-top: 0px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.active {
-    color: white;
-    background-color: rgba(38, 6, 244, 0.767);
-    width: 265px;
-    text-decoration: none;
-    padding: 8px;
-    display: inline-block;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    margin-top: 0px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.menu:hover {
-
-    background-color: rgb(206, 235, 251);
-    width: 260px;
-}
-
-.menu-icon {
-    height: 20px;
-    margin-right: 4px;
-}
-
+/* DATUM RECHTS */
 .datum {
-    position: absolute;
-    right: 50px;
-    top: 16px;
-    color: #030303;
-}
-
-.datum-row {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 16px;
-}
-
-.datum-row p {
-    margin: 0;
+    gap: 25px;
     font-weight: 600;
+    color: #0d2b52;
 }
 
 .profile-box {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 0;
-    border: none;
-    border-radius: 0;
-    background-color: transparent;
+    gap: 10px;
 }
 
 .profile-pic {
-    width: 32px;
-    height: 32px;
-    object-fit: cover;
-    border-radius: 50%;
+    width: 28px;
+    height: 28px;
 }
 
-.hauptfeld-mitte {
-    border-radius: 8px;
-    width: 800px;
+/* SIDEBAR LINKS */
+.menuleiste-links {
     position: fixed;
-    top: 100px;
-    left: 350px;
-    right: 10px;
-    bottom: 0;
-    padding: 20px;
-    padding-bottom: 80px;
-    overflow-y: auto;
-    margin-bottom: 20px;
+    top: clamp(90px, 10.5vw, 155px);
+    left: clamp(10px, 1.5vw, 30px);
+    width: clamp(180px, 18vw, 260px);
+    background: white;
+    border-radius: 18px;
+    padding: 18px;
+    border-top: 6px solid #159bd7;
+    box-shadow: 0 8px 25px rgba(13, 43, 82, 0.10);
+}
+
+.menuleiste-links a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: clamp(8px, 1vw, 13px) 16px;
+    margin-bottom: 6px;
+    text-decoration: none;
+    color: #24539b;
+    font-size: clamp(13px, 1.2vw, 16px);
+    border-radius: 10px;
+    border-left: 4px solid transparent;
+}
+
+.menuleiste-links a:hover {
+    background-color: #eef8fc;
+    border-left-color: #159bd7;
+}
+
+.menuleiste-links .active {
+    background: linear-gradient(90deg, #159bd7, #1fb286);
+    color: white;
+    font-weight: bold;
+    border-left-color: #ff7a2f;
+}
+
+.menu-icon {
+    width: 22px;
+    height: 22px;
+}
+
+/* HAUPTINHALT */
+.hauptfeld-mitte {
+    margin-left: clamp(200px, 21vw, 320px);
+    padding: clamp(20px, 3vw, 60px) clamp(20px, 4vw, 60px) 100px clamp(20px, 3vw, 50px);
+    max-width: 1400px;
 }
 
 .speiseplan-eintrag {
@@ -212,24 +212,22 @@ h1 {
     margin-bottom: 10px;
 }
 
+/* FOOTER */
 .fußzeile {
     position: fixed;
-    left: 350px;
-    right: 10px;
-    bottom: 10px;
-    display: flex;
-    align-items: center;
-
-    padding: 12px 16px;
+    bottom: 0;
+    width: 100%;
+    padding: 8px 30px;
+    box-sizing: border-box;
+    background: white;
+    border-top: 1px solid #e5e5e5;
+    text-align: center;
     font-size: 12px;
-    color: #525252;
+    color: #555;
+    z-index: 1000;
 }
 
 .fußzeile a {
-    color: inherit;
+    color: #3d21d9;
     text-decoration: none;
-}
-
-.fußzeile a:hover {
-    text-decoration: underline;
 }

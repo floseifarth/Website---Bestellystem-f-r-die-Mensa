@@ -187,7 +187,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         const { data, error } = await supabase
             .from("Speiseplan")
-            .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstete, PreisGast, image_url")
+            .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstet, PreisGast, image_url")
             .gte("Ausgabedatum", isoDate)
             .lt("Ausgabedatum", nextIsoDate)
             .order("Ausgabedatum", { ascending: true })
@@ -202,7 +202,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             currentDish = {
                 name: data.Gerichtname || "Unbenanntes Gericht",
                 priceStud: toEuroText(data.PreisStudierende),
-                priceBed: toEuroText(data.PreisBedienstete),
+                priceBed: toEuroText(data.PreisBedienstet),
                 priceGuest: toEuroText(data.PreisGast),
                 image: data.image_url || "",
                 alt: data.Gerichtname || "Gericht",
@@ -294,7 +294,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (datumSelect) {
         datumSelect.innerHTML = "";
         const startDate = new Date();
-        startDate.setDate(startDate.getDate() + 14);
+        startDate.setDate(startDate.getDate() + 1);
 
         let addedDays = 0;
         let currentDate = new Date(startDate);
