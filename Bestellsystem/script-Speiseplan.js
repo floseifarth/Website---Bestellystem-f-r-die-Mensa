@@ -2,6 +2,13 @@ import { supabase } from "./supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
+function toIsoDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
 async function ermittleVorname(user) {
     const fullName = (user.user_metadata?.full_name || "").trim();
     if (fullName) {
@@ -30,9 +37,21 @@ async function ermittleVorname(user) {
 }
 
 async function ladeGerichte() {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    //Zeigt die aktuellen Gerichte für die nächsten 7 Tage an (inklusive heute).
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+
+    const startIsoDate = toIsoDate(startDate);
+    const endIsoDate = toIsoDate(endDate);
+
     const { data, error } = await supabase
         .from("Speiseplan")
         .select("*")
+        .gte("Ausgabedatum", startIsoDate)
+        .lte("Ausgabedatum", endIsoDate)
         .order("Ausgabedatum", { ascending: true });
 
     if (error) {
@@ -44,7 +63,7 @@ async function ladeGerichte() {
     container.innerHTML = "";
 
     if (data.length === 0) {
-        container.innerHTML = "<p>Aktuell sind keine Gerichte eingetragen.</p>";
+        container.innerHTML = "<p>Für die nächsten 7 Tage sind aktuell keine Gerichte eingetragen.</p>";
         return;
     }
 
@@ -75,9 +94,7 @@ async function ladeGerichte() {
                     <p>Gäste: <strong>${gericht.PreisGast}</strong></p>
                 </div>
             </div>
-            <div class="speiseplan-rechts">
-                <a class="vorbestell-btn" href="Vorbestellungen.html">Vorbestellen</a>
-            </div>
+           
         `;
 
         container.appendChild(eintrag);

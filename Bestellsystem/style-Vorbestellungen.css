@@ -116,18 +116,30 @@ body {
 }
 
 .auswahlleiste {
-    background-color: rgb(245, 243, 243);
-    width: 620px;
-    border-radius: 8px;
-    padding: 10px;
-    font-weight: 400;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-
+    font-size: 16px;
+    font-weight: 600;
+    color: #0d2b52;
+    margin-bottom: 20px;
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px 24px;
+    width: 600px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* Test: Neues Format */
+.GerichtanzeigeDatum {
+    font-size: 16px;
+    font-weight: 600;
+    color: #0d2b52;
+    margin-bottom: 20px;
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px 24px;
+    width: 600px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+
 .speiseplan-eintrag {
     width: 600px;
     background: #ffffff;

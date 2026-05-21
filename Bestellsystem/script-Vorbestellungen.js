@@ -1,5 +1,56 @@
 import { supabase } from "./supabaseClient.js";
+
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+
+function toIsoDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function parsePrice(priceText) {
+    const cleaned = String(priceText || "").replace(/[^\d,.-]/g, "");
+    return Number(cleaned.replace(",", "."));
+}
+
+function formatPrice(amount) {
+    return amount.toFixed(2).replace(".", ",") + " €";
+}
+
+function toEuroText(priceValue) {
+    if (priceValue === null || priceValue === undefined || priceValue === "") {
+        return "-";
+    }
+    if (typeof priceValue === "number") {
+        return formatPrice(priceValue);
+    }
+    if (typeof priceValue === "string") {
+        return priceValue.includes("€") ? priceValue : `${priceValue} €`;
+    }
+    return String(priceValue);
+}
+
+function ermittleStartDerUebernaechstenWoche() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Von heute aus zum naechsten Montag und dann eine weitere Woche vor.
+    const day = today.getDay();
+    const daysUntilNextMonday = day === 0 ? 1 : 8 - day;
+
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() + daysUntilNextMonday + 7);
+    return startDate;
+}
+
+function formatiereAnzeigeDatum(date) {
+    return date.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+    });
+}
 
 async function ermittleVorname(user) {
     const fullName = (user.user_metadata?.full_name || "").trim();
@@ -26,29 +77,7 @@ async function ermittleVorname(user) {
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
-    // Header-Datum initialisieren
     const heute = new Date();
-
-    // Aktuelle Supabase-Session abrufen (gespeichert nach dem Login).
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
-
-    // Kein eingeloggter User? Zurueck zur Anmeldeseite.
-    if (!user) {
-        window.location.href = "Anmeldestartseite.html";
-        return;
-    }
-
-    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
-    const displayName = await ermittleVorname(user);
-
-    // Namen rechts oben im Profil-Bereich einsetzen.
-    const nameElement = document.getElementById("user-display-name");
-    if (nameElement) {
-        nameElement.textContent = displayName;
-    }
-
-
     const wochentag = WOCHENTAGE[heute.getDay()];
     const datum = heute.toLocaleDateString("de-DE");
 
@@ -57,165 +86,22 @@ document.addEventListener("DOMContentLoaded", async function () {
         datumElement.innerText = wochentag + ", " + datum;
     }
 
-    // Array für die aktuelle Bestellliste
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+
+    if (!user) {
+        window.location.href = "Anmeldestartseite.html";
+        return;
+    }
+
+    const displayName = await ermittleVorname(user);
+    const nameElement = document.getElementById("user-display-name");
+    if (nameElement) {
+        nameElement.textContent = displayName;
+    }
+
     let orderItems = [];
-    let currentDish = null;
 
-    function getDishUiElements() {
-        return {
-            nameElement: document.getElementById("gericht-name"),
-            dishImage: document.querySelector(".gericht-bild"),
-            tagElement: document.getElementById("gericht-tag"),
-            gerichtDatumElement: document.getElementById("gericht-datum"),
-            studElement: document.getElementById("preis-stud"),
-            bedElement: document.getElementById("preis-bed"),
-            guestElement: document.getElementById("preis-guest"),
-            allergeneElement: document.querySelector(".allergene")
-        };
-    }
-
-    function setDishDateText(gerichtDatumElement, datumText) {
-        if (!gerichtDatumElement || !datumText) return;
-        const parts = datumText.split(", ");
-        gerichtDatumElement.innerText = parts[1] || datumText;
-    }
-
-    function resetPriceSelection() {
-        document.querySelectorAll('input[name="preis"]').forEach(radio => {
-            radio.checked = false;
-        });
-
-        const addBtn = document.getElementById("add-order-button");
-        if (addBtn) addBtn.disabled = true;
-    }
-
-    // Den Textpreis wie "4,10 €" in eine Zahl wandeln
-    function parsePrice(priceText) {
-        const cleaned = priceText.replace(/[^\d,.-]/g, "");
-        return Number(cleaned.replace(",", "."));
-    }
-
-    // Numerischen Preis in deutsches Format umwandeln
-    function formatPrice(amount) {
-        return amount.toFixed(2).replace(".", ",") + " €";
-    }
-
-    function toEuroText(priceValue) {
-        if (priceValue === null || priceValue === undefined || priceValue === "") {
-            return "-";
-        }
-        if (typeof priceValue === "number") {
-            return formatPrice(priceValue);
-        }
-        if (typeof priceValue === "string") {
-            return priceValue.includes("€") ? priceValue : `${priceValue} €`;
-        }
-        return String(priceValue);
-    }
-
-    function renderDish(dish, weekday, datumText) {
-        const {
-            nameElement,
-            dishImage,
-            tagElement,
-            gerichtDatumElement,
-            studElement,
-            bedElement,
-            guestElement,
-            allergeneElement
-        } = getDishUiElements();
-
-        if (nameElement) nameElement.innerText = dish.name;
-        if (studElement) studElement.innerText = dish.priceStud;
-        if (bedElement) bedElement.innerText = dish.priceBed;
-        if (guestElement) guestElement.innerText = dish.priceGuest;
-        if (dishImage) {
-            if (dish.image) {
-                dishImage.src = dish.image;
-                dishImage.alt = dish.alt;
-            } else {
-                dishImage.removeAttribute("src");
-                dishImage.alt = "";
-            }
-        }
-        if (tagElement) tagElement.innerText = weekday;
-        setDishDateText(gerichtDatumElement, datumText);
-        if (allergeneElement) {
-            allergeneElement.innerText = `Allergene: ${dish.allergene || "keine Angabe"}`;
-        }
-
-        resetPriceSelection();
-    }
-
-    function clearDish(weekday, datumText) {
-        const {
-            nameElement,
-            dishImage,
-            tagElement,
-            gerichtDatumElement,
-            studElement,
-            bedElement,
-            guestElement,
-            allergeneElement
-        } = getDishUiElements();
-
-        if (nameElement) nameElement.innerText = "";
-        if (studElement) studElement.innerText = "";
-        if (bedElement) bedElement.innerText = "";
-        if (guestElement) guestElement.innerText = "";
-        if (dishImage) {
-            dishImage.removeAttribute("src");
-            dishImage.alt = "";
-        }
-        if (tagElement) tagElement.innerText = weekday;
-        setDishDateText(gerichtDatumElement, datumText);
-        if (allergeneElement) {
-            allergeneElement.innerText = "";
-        }
-
-        resetPriceSelection();
-    }
-
-    // Lädt genau ein Gericht für das gewählte Ausgabedatum.
-    async function ladeGerichtFuerDatum(isoDate, weekday, datumText) {
-        const nextDate = new Date(`${isoDate}T00:00:00`);
-        nextDate.setDate(nextDate.getDate() + 1);
-        const nextYear = nextDate.getFullYear();
-        const nextMonth = String(nextDate.getMonth() + 1).padStart(2, "0");
-        const nextDay = String(nextDate.getDate()).padStart(2, "0");
-        const nextIsoDate = `${nextYear}-${nextMonth}-${nextDay}`;
-
-        const { data, error } = await supabase
-            .from("Speiseplan")
-            .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstet, PreisGast, image_url")
-            .gte("Ausgabedatum", isoDate)
-            .lt("Ausgabedatum", nextIsoDate)
-            .order("Ausgabedatum", { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-        if (error) {
-            console.error("Fehler beim Laden der Vorbestellungs-Gerichte:", error);
-        }
-
-        if (data) {
-            currentDish = {
-                name: data.Gerichtname || "Unbenanntes Gericht",
-                priceStud: toEuroText(data.PreisStudierende),
-                priceBed: toEuroText(data.PreisBedienstet),
-                priceGuest: toEuroText(data.PreisGast),
-                image: data.image_url || "",
-                alt: data.Gerichtname || "Gericht",
-                allergene: data.Allergene || "keine Angabe"
-            };
-            renderDish(currentDish, weekday, datumText);
-        } else {
-            currentDish = null;
-            clearDish(weekday, datumText);
-        }
-    }
-
-    // Bestellübersicht rechts neu zeichnen
     function updateOrderSummary() {
         const orderList = document.getElementById("order-list");
         const totalElement = document.getElementById("order-total");
@@ -234,12 +120,12 @@ document.addEventListener("DOMContentLoaded", async function () {
                 const row = document.createElement("div");
                 row.className = "bestell-zeile";
                 row.innerHTML = `<div class="gerichts-info">
-                             <div class="gerichtnamezeile">
-                                 <span>1x ${item.name}<br>${item.date}</span>
-                                 <span class="preis">${item.price}</span>
-                                 <button class="remove-button">x</button>
-                             </div>
-                          </div>`;
+                    <div class="gerichtnamezeile">
+                        <span>1x ${item.name}<br>${item.date}</span>
+                        <span class="preis">${item.price}</span>
+                        <button class="remove-button" type="button">x</button>
+                    </div>
+                </div>`;
 
                 const removeButton = row.querySelector(".remove-button");
                 if (removeButton) {
@@ -257,100 +143,158 @@ document.addEventListener("DOMContentLoaded", async function () {
         totalElement.innerText = formatPrice(total);
     }
 
-    // Aktuelles Gericht zur Bestellliste hinzufügen
-    function addOrderItem() {
-        const nameElement = document.getElementById("gericht-name");
-        const datumSelect = document.getElementById("datum-select");
-        const itemElement = document.querySelector(".gericht-bild");
-        const selectedRadio = document.querySelector('input[name="preis"]:checked');
-        if (!nameElement || !datumSelect || !selectedRadio || !currentDish) return;
+    function addOrderItem(dish, selectedPriceKey) {
+        // Preis und Kategorie werden ueber den gewaelten Radio-Key aufgeloest.
+        const priceMap = {
+            stud: dish.priceStud,
+            bed: dish.priceBed,
+            guest: dish.priceGuest
+        };
 
-        const priceMap = { stud: currentDish.priceStud, bed: currentDish.priceBed, guest: currentDish.priceGuest };
-        const categoryMap = { stud: "Studierende", bed: "Bedienstete", guest: "Gäste" };
-        const selectedPrice = priceMap[selectedRadio.value];
-        const selectedCategory = categoryMap[selectedRadio.value];
+        const categoryMap = {
+            stud: "Studierende",
+            bed: "Bedienstete",
+            guest: "Gäste"
+        };
+
+        const selectedPrice = priceMap[selectedPriceKey];
+        const selectedCategory = categoryMap[selectedPriceKey];
 
         if (!selectedPrice || selectedPrice === "-") {
             alert("Für diese Kategorie ist aktuell kein Preis hinterlegt.");
             return;
         }
 
-        const selectedDate = datumSelect.selectedOptions[0]?.textContent || datum;
-
         orderItems.push({
-            date: selectedDate,
-            name: nameElement.innerText,
+            date: dish.datumText,
+            name: dish.name,
             price: selectedPrice,
             category: selectedCategory,
-            image: itemElement ? itemElement.src : ""
+            image: dish.image
         });
+
         updateOrderSummary();
-
-        localStorage.setItem("Bestellung", JSON.stringify(orderItems));
     }
 
-    // Datumsauswahl mit den nächsten 14 Werktagen befüllen
-    const datumSelect = document.getElementById("datum-select");
-    if (datumSelect) {
-        datumSelect.innerHTML = "";
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() + 1);
+    function ladeGerichtzeitraum() {
+        const startDate = ermittleStartDerUebernaechstenWoche();
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 4);
 
-        let addedDays = 0;
-        let currentDate = new Date(startDate);
-
-        while (addedDays < 14) {
-            const dayOfWeek = currentDate.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                const tagName = WOCHENTAGE[dayOfWeek];
-                const datumString = currentDate.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
-                const option = document.createElement("option");
-                const year = currentDate.getFullYear();
-                const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-                const day = String(currentDate.getDate()).padStart(2, "0");
-                option.value = `${year}-${month}-${day}`;
-                option.textContent = `${tagName}, ${datumString}`;
-                option.dataset.weekday = tagName;
-                datumSelect.appendChild(option);
-                addedDays++;
-            }
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        datumSelect.addEventListener("change", async function () {
-            const weekday = this.selectedOptions[0]?.dataset.weekday;
-            const datumText = this.selectedOptions[0]?.textContent;
-            const isoDate = this.selectedOptions[0]?.value;
-            if (weekday && isoDate) {
-                await ladeGerichtFuerDatum(isoDate, weekday, datumText);
-            }
-        });
-
-        if (datumSelect.options.length > 0) {
-            datumSelect.selectedIndex = 0;
-            await ladeGerichtFuerDatum(
-                datumSelect.options[0].value,
-                datumSelect.options[0].dataset.weekday,
-                datumSelect.options[0].textContent
-            );
+        const anzeigeElement = document.getElementById("GerichtanzeigeDatum");
+        if (anzeigeElement) {
+            const startString = formatiereAnzeigeDatum(startDate);
+            const endString = formatiereAnzeigeDatum(endDate);
+            anzeigeElement.innerText = `Gerichte für den Zeitraum: ${startString} - ${endString}`;
         }
     }
 
-    // Button aktivieren sobald ein Preis gewählt wird
-    document.querySelectorAll('input[name="preis"]').forEach(function (radio) {
-        radio.addEventListener("change", function () {
-            const addBtn = document.getElementById("add-order-button");
-            if (addBtn) addBtn.disabled = false;
-        });
-    });
+    async function ladeGerichteDerUebernaechstenWoche() {
+        const startDate = ermittleStartDerUebernaechstenWoche();
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 4);
 
-    // Klick-Event auf den Bestellbutton setzen
-    const addButton = document.getElementById("add-order-button");
-    if (addButton) {
-        addButton.addEventListener("click", addOrderItem);
+        const startIsoDate = toIsoDate(startDate);
+        const endIsoDate = toIsoDate(endDate);
+
+        const { data, error } = await supabase
+            .from("Speiseplan")
+            .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstet, PreisGast, image_url, Ausgabedatum")
+            .gte("Ausgabedatum", startIsoDate)
+            .lte("Ausgabedatum", endIsoDate)
+            .order("Ausgabedatum", { ascending: true });
+
+        const container = document.getElementById("speiseplan-container");
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        if (error) {
+            console.error("Fehler beim Laden der Vorbestellungs-Gerichte:", error);
+            container.innerHTML = "<p>Gerichte konnten nicht geladen werden.</p>";
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            container.innerHTML = "<p>Für die übernächste Woche (Mo-Fr) sind aktuell keine Gerichte eingetragen.</p>";
+            return;
+        }
+
+        // Jedes Gericht bekommt eine eigene Preiswahl plus eigenen Bestellbutton.
+        data.forEach(function (gericht, index) {
+            const datumObj = new Date(gericht.Ausgabedatum);
+            datumObj.setMinutes(datumObj.getMinutes() + datumObj.getTimezoneOffset());
+
+            const dayIndex = datumObj.getDay();
+            const tagName = WOCHENTAGE[dayIndex];
+            const datumString = formatiereAnzeigeDatum(datumObj);
+            const datumText = `${tagName}, ${datumString}`;
+
+            const dish = {
+                name: gericht.Gerichtname || "Unbenanntes Gericht",
+                priceStud: toEuroText(gericht.PreisStudierende),
+                priceBed: toEuroText(gericht.PreisBedienstet),
+                priceGuest: toEuroText(gericht.PreisGast),
+                image: gericht.image_url || "img/Profil.svg",
+                allergene: gericht.Allergene || "keine Angabe",
+                datumText
+            };
+
+            const radioName = `preis-${index}`;
+            const entry = document.createElement("div");
+            entry.className = "speiseplan-eintrag";
+            entry.innerHTML = `
+                <div class="speiseplan-links">
+                    <h3>${tagName}</h3>
+                    <p>${datumString}</p>
+                </div>
+
+                <div class="speiseplan-mitte">
+                    <img src="${dish.image}" class="gericht-bild" alt="${dish.name}">
+                    <p>Tagesangebot</p>
+                    <h3>${dish.name}</h3>
+
+                    <p class="allergene">Allergene: ${dish.allergene}</p>
+                    <div class="preise">
+                        <label><input type="radio" name="${radioName}" value="stud"> Studierende: <strong>${dish.priceStud}</strong></label><br>
+                        <label><input type="radio" name="${radioName}" value="bed"> Bedienstete: <strong>${dish.priceBed}</strong></label><br>
+                        <label><input type="radio" name="${radioName}" value="guest"> Gäste: <strong>${dish.priceGuest}</strong></label>
+                    </div>
+                </div>
+
+                <div class="speiseplan-rechts">
+                    <button type="button" class="vorbestell-btn" disabled>Zur Bestellung hinzufügen</button>
+                </div>
+            `;
+
+            const addButton = entry.querySelector(".vorbestell-btn");
+            const priceRadios = entry.querySelectorAll(`input[name="${radioName}"]`);
+
+            priceRadios.forEach(function (radio) {
+                radio.addEventListener("change", function () {
+                    // Der Button wird erst nach gueltiger Preiswahl freigeschaltet.
+                    if (addButton) addButton.disabled = false;
+                });
+            });
+
+            if (addButton) {
+                addButton.addEventListener("click", function () {
+                    const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
+                    if (!selectedRadio) {
+                        alert("Bitte zuerst eine Preiskategorie auswählen.");
+                        return;
+                    }
+
+                    addOrderItem(dish, selectedRadio.value);
+                    selectedRadio.checked = false;
+                    addButton.disabled = true;
+                });
+            }
+
+            container.appendChild(entry);
+        });
     }
 
-    // Beim Abschicken: Bestellung im localStorage speichern
     const abschickenButton = document.querySelector(".vorbestellung-button");
     if (abschickenButton) {
         abschickenButton.addEventListener("click", function (e) {
@@ -359,12 +303,14 @@ document.addEventListener("DOMContentLoaded", async function () {
                 alert("Bitte füge zuerst ein Gericht zur Bestellung hinzu.");
                 return;
             }
+
             const vorhandene = JSON.parse(localStorage.getItem("bestellungen")) || [];
             const alleBestellungen = vorhandene.concat(orderItems);
             localStorage.setItem("bestellungen", JSON.stringify(alleBestellungen));
         });
     }
 
-    // Zu Beginn die Bestellübersicht initial anzeigen
     updateOrderSummary();
+    ladeGerichtzeitraum();
+    await ladeGerichteDerUebernaechstenWoche();
 });

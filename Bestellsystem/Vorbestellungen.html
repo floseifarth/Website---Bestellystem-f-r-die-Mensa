@@ -78,52 +78,26 @@
         ✔️Zahlung erfolgt bei Abholung über das Mensa-Guthaben. <br><br>
 
         <div class="auswahlleiste">
-            Mensa wählen:
-            <select>
-                <!-- <option value="Stadtmitte">Esslingen Stadtmitte</option>
-                <option value="Flandernstraße ">Flandernstraße</option> -->
+            Mensa: Göppingen
+            <!-- <select>
+                <option value="Stadtmitte">Esslingen Stadtmitte</option>
+                <option value="Flandernstraße ">Flandernstraße</option> 
                 <option value="Göppingen">Göppingen</option>
-            </select>
-            <!-- Datum wählen: -->
-            <select id="datum-select"></select>
+            </select> -->
+            <br><br>
+            <div id="GerichtanzeigeDatum"></div>
         </div>
 
-        <div id="speiseplan-container">
-
-            <div class="speiseplan-eintrag">
-                <div class="speiseplan-links">
-                    <h3 id="gericht-tag"></h3>
-                    <p id="gericht-datum"></p>
-                </div>
-
-                <div class="speiseplan-mitte">
-                    <img src="img/Profil.svg" class="gericht-bild" alt="Gericht">
-                    <p>Tagesangebot</p>
-                    <h3 id="gericht-name"></h3>
 
 
-                    <p class="allergene">
-                        Allergene: keine Angabe
-                    </p>
-                    <div class="preise" id="preise-auswahl">
-                        <label><input type="radio" name="preis" value="stud"> Studierende: <strong
-                                id="preis-stud"></strong></label><br>
-                        <label><input type="radio" name="preis" value="bed"> Bedienstete: <strong
-                                id="preis-bed"></strong></label><br>
-                        <label><input type="radio" name="preis" value="guest"> Gäste: <strong
-                                id="preis-guest"></strong></label>
-                    </div>
-                </div>
 
-                <div class="speiseplan-rechts">
-                    <button type="button" class="vorbestell-btn" id="add-order-button" disabled>Zur Bestellung
-                        hinzufügen</button>
-                </div>
-            </div>
-        </div>
+
+        <!-- Speiseplan wird automatisch geladen und nur die übernächste Woche angezeigt -->
+        <div id="speiseplan-container"></div>
 
     </div>
 
+    <!-- Bestellfenster -->
     <div class="bestellfenster">
         Ihre Vorbestellung: <br><br>
         <div class="bestellfensterfenster" id="order-list">

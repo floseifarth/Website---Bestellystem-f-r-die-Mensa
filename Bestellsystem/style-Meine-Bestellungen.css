@@ -166,12 +166,18 @@ body {
 
 .speiseplan-rechts {
     display: flex;
-    justify-content: flex-end;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 8px;
 }
 
 .vorbestell-btn {
-    display: inline-block;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 145px;
+    box-sizing: border-box;
     background: linear-gradient(135deg, #6a5af9, #8b7bff);
     border: none;
     padding: 10px 18px;
@@ -180,7 +186,7 @@ body {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    margin-top: 12px;
+    margin-top: 0;
     text-decoration: none;
 }
 
@@ -224,6 +230,67 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+/* MODAL */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 20, 43, 0.42);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-dialog {
+    background: #ffffff;
+    padding: 22px;
+    border-radius: 14px;
+    min-width: 300px;
+    max-width: 440px;
+    box-shadow: 0 12px 34px rgba(6, 31, 67, 0.22);
+    border-top: 4px solid #159bd7;
+}
+
+.modal-text {
+    margin: 0 0 16px 0;
+    color: #0d2b52;
+    font-weight: 600;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-nein,
+.modal-ja {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.modal-nein {
+    background: #eef2f8;
+    color: #0d2b52;
+}
+
+.modal-nein:hover {
+    background: #e2e8f2;
+}
+
+.modal-ja {
+    background: linear-gradient(135deg, #159bd7, #1fb286);
+    color: #ffffff;
+}
+
+.modal-ja:hover {
+    filter: brightness(1.03);
 }
 
 /* FOOTER */

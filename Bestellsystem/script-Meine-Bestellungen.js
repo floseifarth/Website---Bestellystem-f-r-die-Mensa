@@ -76,6 +76,37 @@ document.addEventListener("DOMContentLoaded", async function () {
         return `${match[1].padStart(2, '0')}. ${monate[parseInt(match[2], 10) - 1]} ${match[3]}`;
     }
 
+    //Pop-Up Fenster zur Bestätigung der Stornierung
+    function bestaetigungMitEigenemModal(frage) {
+        return new Promise(function (resolve) {
+            const overlay = document.createElement("div");
+            overlay.className = "modal-overlay";
+
+            const dialog = document.createElement("div");
+            dialog.className = "modal-dialog";
+            dialog.innerHTML = `
+                <p class="modal-text">${frage}</p>
+                <div class="modal-actions">
+                    <button type="button" class="modal-nein">Abbrechen</button>
+                    <button type="button" class="modal-ja">Ja, stornieren</button>
+                </div>
+            `;
+
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+
+            dialog.querySelector(".modal-nein").addEventListener("click", function () {
+                overlay.remove();
+                resolve(false);
+            });
+
+            dialog.querySelector(".modal-ja").addEventListener("click", function () {
+                overlay.remove();
+                resolve(true);
+            });
+        });
+    }
+
     // Bestellliste im HTML und gespeicherte Bestellungen aus localStorage holen
     const orderList = document.getElementById("order-list");
     const bestellungen = JSON.parse(localStorage.getItem("bestellungen")) || [];
@@ -137,9 +168,16 @@ document.addEventListener("DOMContentLoaded", async function () {
                 </div>
                 <div class="speiseplan-rechts">
                     <button type="button" class="vorbestell-btn remove-button">Stornieren</button>
+    
+                    <button type="button" class="vorbestell-btn edit-button">Bearbeiten</button>
                 </div>`;
 
-            row.querySelector(".remove-button").addEventListener("click", function () {
+            row.querySelector(".remove-button").addEventListener("click", async function () {
+                const bestaetigt = await bestaetigungMitEigenemModal("Möchtest du diese Bestellung wirklich stornieren?");
+                if (!bestaetigt) {
+                    return;
+                }
+
                 // Alle Einträge dieser Gruppe entfernen (von hinten, damit Indizes stimmen)
                 gruppe.indices.slice().sort((a, b) => b - a).forEach(function (i) {
                     bestellungen.splice(i, 1);
@@ -148,9 +186,14 @@ document.addEventListener("DOMContentLoaded", async function () {
                 location.reload();
             });
 
+            row.querySelector(".edit-button").addEventListener("click", function () {
+                // Hier kann die Logik zum Bearbeiten der Bestellung eingefügt werden
+            });
+
             orderList.appendChild(row);
             total += gruppenTotal;
         });
+
 
 
     }
