@@ -201,6 +201,57 @@ body {
     line-height: 1.6;
 }
 
+.preise-liste {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.preise-zeile {
+    margin: 0;
+}
+
+.inline-edit-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.inline-edit-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
+.inline-edit-label {
+    margin: 0;
+    color: #0d2b52;
+    font-size: 14px;
+}
+
+.inline-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inline-action-btn {
+    width: 42px;
+    min-width: 42px;
+    padding: 8px 0;
+}
+
+.inline-edit-footer {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
 .gericht-bild {
     width: 200px;
     height: 120px;

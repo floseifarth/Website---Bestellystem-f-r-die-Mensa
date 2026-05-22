@@ -2,6 +2,83 @@ import { supabase } from "./supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
+function normalisiereBestellDatum(bestellDatum) {
+    const dateParts = String(bestellDatum || "").split(", ");
+    const datumText = dateParts[1] || dateParts[0] || "";
+
+    const numerischMatch = datumText.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
+    if (numerischMatch) {
+        const tag = numerischMatch[1].padStart(2, "0");
+        const monat = numerischMatch[2].padStart(2, "0");
+        const jahrRoh = numerischMatch[3];
+        const jahr = jahrRoh.length === 2 ? `20${jahrRoh}` : jahrRoh;
+        return `${tag}.${monat}.${jahr}`;
+    }
+
+    const monate = {
+        Januar: "01",
+        Februar: "02",
+        März: "03",
+        April: "04",
+        Mai: "05",
+        Juni: "06",
+        Juli: "07",
+        August: "08",
+        September: "09",
+        Oktober: "10",
+        November: "11",
+        Dezember: "12"
+    };
+
+    const textMatch = datumText.match(/^(\d{1,2})\.\s+([A-Za-zÄÖÜäöüß]+)\s+(\d{2}|\d{4})$/);
+    if (!textMatch) {
+        return datumText;
+    }
+
+    const tag = textMatch[1].padStart(2, "0");
+    const monat = monate[textMatch[2]];
+    const jahrRoh = textMatch[3];
+    const jahr = jahrRoh.length === 2 ? `20${jahrRoh}` : jahrRoh;
+    if (!monat) {
+        return datumText;
+    }
+
+    return `${tag}.${monat}.${jahr}`;
+}
+
+function formatiereZeitraumDatum(date) {
+    return date.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+    });
+}
+
+function ladeGerichtzeitraum(startDate, endDate) {
+    const anzeigeElement = document.getElementById("GerichtanzeigeDatum");
+    if (!anzeigeElement) {
+        return;
+    }
+
+    const startString = formatiereZeitraumDatum(startDate);
+    const endString = formatiereZeitraumDatum(endDate);
+    anzeigeElement.innerText = `Gerichte für den Zeitraum: ${startString} - ${endString}`;
+}
+
+function ermittleVorbestellungsZaehler() {
+    const bestellungen = JSON.parse(localStorage.getItem("bestellungen")) || [];
+    const zaehler = {};
+
+    bestellungen.forEach(function (bestellung) {
+        const datum = normalisiereBestellDatum(bestellung.date);
+        const gericht = String(bestellung.name || "").trim();
+        const key = `${datum}||${gericht}`;
+        zaehler[key] = (zaehler[key] || 0) + 1;
+    });
+
+    return zaehler;
+}
+
 function toIsoDate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -37,12 +114,14 @@ async function ermittleVorname(user) {
 }
 
 async function ladeGerichte() {
+    const vorbestellungsZaehler = ermittleVorbestellungsZaehler();
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 
     //Zeigt die aktuellen Gerichte für die nächsten 7 Tage an (inklusive heute).
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 6);
+    endDate.setDate(endDate.getDate() + 16);
+    ladeGerichtzeitraum(startDate, endDate);
 
     const startIsoDate = toIsoDate(startDate);
     const endIsoDate = toIsoDate(endDate);
@@ -75,10 +154,15 @@ async function ladeGerichte() {
         const datumFormatiert = datum.toLocaleDateString("de-DE", {
             day: "2-digit", month: "2-digit", year: "numeric"
         });
+        const vorbestellKey = `${datumFormatiert}||${String(gericht.Gerichtname || "").trim()}`;
+        const anzahlVorbestellungen = vorbestellungsZaehler[vorbestellKey] || 0;
 
         const eintrag = document.createElement("div");
-        eintrag.className = "speiseplan-eintrag";
+        eintrag.className = anzahlVorbestellungen > 0
+            ? "speiseplan-eintrag ist-vorbestellt"
+            : "speiseplan-eintrag";
         eintrag.innerHTML = `
+            ${anzahlVorbestellungen > 0 ? '<span class="vorbestellt-notiz">Vorbestellt!</span>' : ''}
             <div class="speiseplan-links">
                 <h3>${wochentag}</h3>
                 <p>${datumFormatiert}</p>
@@ -94,7 +178,7 @@ async function ladeGerichte() {
                     <p>Gäste: <strong>${gericht.PreisGast}</strong></p>
                 </div>
             </div>
-           
+            <div class="speiseplan-rechts"></div>
         `;
 
         container.appendChild(eintrag);
@@ -136,5 +220,4 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Speiseplan aus Supabase laden.
     await ladeGerichte();
-
 });

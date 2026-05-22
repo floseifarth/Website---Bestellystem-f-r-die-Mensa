@@ -170,7 +170,12 @@ document.addEventListener("DOMContentLoaded", async function () {
             name: dish.name,
             price: selectedPrice,
             category: selectedCategory,
-            image: dish.image
+            image: dish.image,
+            priceByCategory: {
+                Studierende: dish.priceStud,
+                Bedienstete: dish.priceBed,
+                Gäste: dish.priceGuest
+            }
         });
 
         updateOrderSummary();

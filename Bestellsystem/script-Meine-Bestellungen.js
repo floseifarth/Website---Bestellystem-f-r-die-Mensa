@@ -1,6 +1,87 @@
 import { supabase } from "./supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const STANDARD_KATEGORIEN = ["Studierende", "Bedienstete", "Gäste"];
+
+function toEuroText(priceValue) {
+    if (priceValue === null || priceValue === undefined || priceValue === "") {
+        return "-";
+    }
+    if (typeof priceValue === "number") {
+        return priceValue.toFixed(2).replace(".", ",") + " €";
+    }
+    if (typeof priceValue === "string") {
+        return priceValue.includes("€") ? priceValue : `${priceValue} €`;
+    }
+    return String(priceValue);
+}
+
+function toIsoDateFromBestellDatum(bestellDatum) {
+    const dateParts = String(bestellDatum || "").split(", ");
+    const datumText = dateParts[1] || dateParts[0] || "";
+    const numerischMatch = datumText.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
+    if (numerischMatch) {
+        const tag = numerischMatch[1].padStart(2, "0");
+        const monat = numerischMatch[2].padStart(2, "0");
+        const jahrRoh = numerischMatch[3];
+        const jahr = jahrRoh.length === 2 ? `20${jahrRoh}` : jahrRoh;
+        return `${jahr}-${monat}-${tag}`;
+    }
+
+    const monate = {
+        Januar: "01",
+        Februar: "02",
+        März: "03",
+        April: "04",
+        Mai: "05",
+        Juni: "06",
+        Juli: "07",
+        August: "08",
+        September: "09",
+        Oktober: "10",
+        November: "11",
+        Dezember: "12"
+    };
+
+    const textMatch = datumText.match(/^(\d{1,2})\.\s+([A-Za-zÄÖÜäöüß]+)\s+(\d{2}|\d{4})$/);
+    if (!textMatch) {
+        return null;
+    }
+
+    const tag = textMatch[1].padStart(2, "0");
+    const monat = monate[textMatch[2]];
+    const jahrRoh = textMatch[3];
+    const jahr = jahrRoh.length === 2 ? `20${jahrRoh}` : jahrRoh;
+    if (!monat) {
+        return null;
+    }
+
+    return `${jahr}-${monat}-${tag}`;
+}
+
+async function ladeFehlendeKategorienpreise(gruppe) {
+    const ausgabeDatum = toIsoDateFromBestellDatum(gruppe.date);
+    if (!ausgabeDatum || !gruppe.name) {
+        return {};
+    }
+
+    const { data, error } = await supabase
+        .from("Speiseplan")
+        .select("PreisStudierende, PreisBedienstet, PreisGast")
+        .eq("Gerichtname", gruppe.name)
+        .eq("Ausgabedatum", ausgabeDatum)
+        .maybeSingle();
+
+    if (error || !data) {
+        return {};
+    }
+
+    return {
+        Studierende: toEuroText(data.PreisStudierende),
+        Bedienstete: toEuroText(data.PreisBedienstet),
+        Gäste: toEuroText(data.PreisGast)
+    };
+}
 
 async function ermittleVorname(user) {
     const fullName = (user.user_metadata?.full_name || "").trim();
@@ -77,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     //Pop-Up Fenster zur Bestätigung der Stornierung
-    function bestaetigungMitEigenemModal(frage) {
+    function StornierungMitEigenemModal(frage) {
         return new Promise(function (resolve) {
             const overlay = document.createElement("div");
             overlay.className = "modal-overlay";
@@ -130,13 +211,28 @@ document.addEventListener("DOMContentLoaded", async function () {
         bestellungen.forEach(function (item, index) {
             const key = `${item.date}||${item.name}`;
             if (!gruppen[key]) {
-                gruppen[key] = { ...item, kategorien: [], indices: [] };
+                gruppen[key] = { ...item, kategorien: [], indices: [], priceByCategory: {} };
+            }
+            if (item.priceByCategory) {
+                Object.assign(gruppen[key].priceByCategory, item.priceByCategory);
             }
             gruppen[key].kategorien.push({ label: item.category || 'Studierende', price: item.price });
+            gruppen[key].priceByCategory[item.category || "Studierende"] = item.price;
             gruppen[key].indices.push(index);
         });
 
-        Object.values(gruppen).forEach(function (gruppe) {
+        const sortierteGruppen = Object.values(gruppen).sort(function (a, b) {
+            const datumA = toIsoDateFromBestellDatum(a.date) || "9999-12-31";
+            const datumB = toIsoDateFromBestellDatum(b.date) || "9999-12-31";
+
+            if (datumA !== datumB) {
+                return datumA.localeCompare(datumB);
+            }
+
+            return (a.name || "").localeCompare(b.name || "", "de");
+        });
+
+        sortierteGruppen.forEach(function (gruppe) {
             const dateParts = (gruppe.date || '').split(', ');
             const wochentag = dateParts[0] || '';
             const datumText = formatDatum(dateParts[1] || '');
@@ -162,7 +258,11 @@ document.addEventListener("DOMContentLoaded", async function () {
                     <p>Tagesangebot</p>
                     <h3>${gruppe.name || ''}</h3>
                     <div class="preise">
-                        <p>${kategorieText}</p>
+                        <div class="preise-liste">
+                            ${Object.entries(counts).map(function ([label, n]) {
+                return `<p class="preise-zeile">${n}x ${label}</p>`;
+            }).join("")}
+                        </div>
                         <p>Gesamt: <strong>${formatPrice(gruppenTotal)}</strong></p>
                     </div>
                 </div>
@@ -171,9 +271,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     
                     <button type="button" class="vorbestell-btn edit-button">Bearbeiten</button>
                 </div>`;
-
+            // Stornieren-Button mit Bestätigungs-Popup verknüpfen
             row.querySelector(".remove-button").addEventListener("click", async function () {
-                const bestaetigt = await bestaetigungMitEigenemModal("Möchtest du diese Bestellung wirklich stornieren?");
+                const bestaetigt = await StornierungMitEigenemModal("Möchtest du diese Bestellung wirklich stornieren?");
                 if (!bestaetigt) {
                     return;
                 }
@@ -185,9 +285,133 @@ document.addEventListener("DOMContentLoaded", async function () {
                 localStorage.setItem("bestellungen", JSON.stringify(bestellungen));
                 location.reload();
             });
+            // Bearbeiten-Button: Mengen direkt im Eintrag anpassen.
+            row.querySelector(".edit-button").addEventListener("click", async function () {
+                const preiseContainer = row.querySelector(".preise");
+                if (!preiseContainer) {
+                    return;
+                }
 
-            row.querySelector(".edit-button").addEventListener("click", function () {
-                // Hier kann die Logik zum Bearbeiten der Bestellung eingefügt werden
+                const bestehendeControls = preiseContainer.querySelector(".inline-edit-controls");
+                if (bestehendeControls) {
+                    return;
+                }
+
+                const fehlendePreise = await ladeFehlendeKategorienpreise(gruppe);
+                if (Object.keys(fehlendePreise).length > 0) {
+                    gruppe.priceByCategory = {
+                        ...(gruppe.priceByCategory || {}),
+                        ...fehlendePreise
+                    };
+                }
+
+                const countsEdit = {};
+                const pricesByLabel = {};
+                STANDARD_KATEGORIEN.forEach(function (label) {
+                    countsEdit[label] = 0;
+
+                    const gespeicherterPreis = gruppe.priceByCategory?.[label];
+                    if (gespeicherterPreis && gespeicherterPreis !== "-") {
+                        pricesByLabel[label] = gespeicherterPreis;
+                    }
+                });
+
+                gruppe.kategorien.forEach(function (k) {
+                    const label = k.label || "Studierende";
+                    countsEdit[label] = (countsEdit[label] || 0) + 1;
+                    if (!pricesByLabel[label] && k.price && k.price !== "-") {
+                        pricesByLabel[label] = k.price;
+                    }
+                });
+
+                const renderPreise = function () {
+                    let gruppenTotalNeu = 0;
+                    Object.entries(countsEdit).forEach(function ([label, n]) {
+                        if (n > 0) {
+                            gruppenTotalNeu += parsePrice(pricesByLabel[label]) * n;
+                        }
+                    });
+
+                    const kategorieZeilen = STANDARD_KATEGORIEN
+                        .map(function (label) {
+                            const n = countsEdit[label] || 0;
+                            const preisVerfuegbar = Boolean(pricesByLabel[label] && pricesByLabel[label] !== "-");
+
+                            return `
+                                <div class="inline-edit-row" data-label="${label}">
+                                    <p class="inline-edit-label">${n}x ${label}</p>
+                                    <div class="inline-edit-actions">
+                                        <button type="button" class="vorbestell-btn inline-action-btn inline-plus" ${preisVerfuegbar ? "" : "disabled"}>+</button>
+                                        <button type="button" class="vorbestell-btn inline-action-btn inline-minus" ${(preisVerfuegbar && n > 0) ? "" : "disabled"}>-</button>
+                                    </div>
+                                </div>
+                            `;
+                        })
+                        .join("");
+
+                    preiseContainer.innerHTML = `
+                        <div class="preise-liste inline-edit-controls">${kategorieZeilen}</div>
+                        <p>Gesamt: <strong>${formatPrice(gruppenTotalNeu)}</strong></p>
+                        <div class="inline-edit-footer">
+                            <button type="button" class="vorbestell-btn inline-save">Speichern</button>
+                            <button type="button" class="vorbestell-btn inline-cancel">Abbrechen</button>
+                        </div>
+                    `;
+
+                    attachInlineListeners();
+                };
+
+                const attachInlineListeners = function () {
+                    preiseContainer.querySelectorAll(".inline-edit-row").forEach(function (editRow) {
+                        const label = editRow.getAttribute("data-label") || "";
+                        const minusBtn = editRow.querySelector(".inline-minus");
+                        const plusBtn = editRow.querySelector(".inline-plus");
+
+                        if (minusBtn && !minusBtn.disabled) {
+                            minusBtn.addEventListener("click", function () {
+                                countsEdit[label] = Math.max(0, (countsEdit[label] || 0) - 1);
+                                renderPreise();
+                            });
+                        }
+
+                        if (plusBtn && !plusBtn.disabled) {
+                            plusBtn.addEventListener("click", function () {
+                                countsEdit[label] = (countsEdit[label] || 0) + 1;
+                                renderPreise();
+                            });
+                        }
+                    });
+
+                    preiseContainer.querySelector(".inline-cancel").addEventListener("click", function () {
+                        location.reload();
+                    });
+
+                    preiseContainer.querySelector(".inline-save").addEventListener("click", function () {
+                        const neueEintraege = [];
+                        Object.entries(countsEdit).forEach(function ([label, n]) {
+                            for (let i = 0; i < n; i += 1) {
+                                neueEintraege.push({
+                                    date: gruppe.date,
+                                    name: gruppe.name,
+                                    image: gruppe.image,
+                                    category: label,
+                                    price: pricesByLabel[label],
+                                    priceByCategory: { ...pricesByLabel }
+                                });
+                            }
+                        });
+
+                        gruppe.indices.slice().sort((a, b) => b - a).forEach(function (i) {
+                            bestellungen.splice(i, 1);
+                        });
+
+                        bestellungen.push(...neueEintraege);
+                        localStorage.setItem("bestellungen", JSON.stringify(bestellungen));
+                        location.reload();
+                    });
+                };
+
+                renderPreise();
             });
 
             orderList.appendChild(row);
