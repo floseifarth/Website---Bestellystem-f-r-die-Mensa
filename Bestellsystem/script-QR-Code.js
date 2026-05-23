@@ -50,4 +50,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         nameElement.textContent = displayName;
     }
 
+    const qrBox = document.getElementById("qr-code-box");
+    if (qrBox) {
+        qrBox.innerHTML = "<p>QR-Code folgt später aus dem Datenbank-Token.</p>";
+    }
+
 });

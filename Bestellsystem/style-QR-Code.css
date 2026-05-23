@@ -115,11 +115,40 @@ body {
     max-width: 1400px;
 }
 
-.QR-Code_Bild {
-    position: absolute;
-    top: 325px;
-    left: 400px;
-    width: 20%;
+.qr-card {
+    margin-top: 32px;
+    max-width: 560px;
+    background: white;
+    border-radius: 22px;
+    border: 1px solid #dce7f3;
+    box-shadow: 0 10px 30px rgba(13, 43, 82, 0.08);
+    padding: 28px;
+}
+
+.qr-code-box {
+    min-height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    border: 2px dashed #9ccde5;
+    background: linear-gradient(180deg, #f8fcff, #eef8fc);
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.qr-code-box p {
+    margin: 0;
+    color: #24539b;
+    font-weight: 600;
+}
+
+#qr-code-hinweis {
+    margin: 18px 0 0;
+    color: #5a6b82;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 /* FOOTER */

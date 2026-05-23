@@ -167,6 +167,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         orderItems.push({
             date: dish.datumText,
+            bestellIsoDate: dish.isoDate,
             name: dish.name,
             price: selectedPrice,
             category: selectedCategory,
@@ -242,7 +243,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 priceGuest: toEuroText(gericht.PreisGast),
                 image: gericht.image_url || "img/Profil.svg",
                 allergene: gericht.Allergene || "keine Angabe",
-                datumText
+                datumText,
+                isoDate: toIsoDate(datumObj)
             };
 
             const radioName = `preis-${index}`;
@@ -300,18 +302,52 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
     }
 
+    // Speichern der Daten in der Supabase-Tabelle "Bestellungen".
+    async function speichereBestellungen(orderItems) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const user = sessionData?.session?.user;
+
+        if (sessionError || !user) {
+            throw new Error("Kein eingeloggter Nutzer gefunden.");
+        }
+
+        const rows = orderItems.map(item => ({
+            auth_user_id: user.id,
+            email: user.email || "",
+            gericht_name: item.name,
+            bestell_datum: item.bestellIsoDate,
+            kategorie: item.category,
+            preis: item.price,
+            image_url: item.image || ""
+        }));
+
+        const { error } = await supabase
+            .from("Bestellungen")
+            .insert(rows);
+
+        if (error) {
+            throw new Error(error.message);
+        }
+    }
+
+    // Beim Abschicken: in der DB speichern und erst dann weiterleiten.
     const abschickenButton = document.querySelector(".vorbestellung-button");
     if (abschickenButton) {
-        abschickenButton.addEventListener("click", function (e) {
+        abschickenButton.addEventListener("click", async function (e) {
+            e.preventDefault();
+
             if (orderItems.length === 0) {
-                e.preventDefault();
                 alert("Bitte füge zuerst ein Gericht zur Bestellung hinzu.");
                 return;
             }
 
-            const vorhandene = JSON.parse(localStorage.getItem("bestellungen")) || [];
-            const alleBestellungen = vorhandene.concat(orderItems);
-            localStorage.setItem("bestellungen", JSON.stringify(alleBestellungen));
+            try {
+                await speichereBestellungen(orderItems);
+
+                window.location.href = "Bestätigungsseite.html";
+            } catch (error) {
+                alert("Bestellungen konnten nicht gespeichert werden: " + error.message);
+            }
         });
     }
 

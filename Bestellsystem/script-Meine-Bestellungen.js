@@ -19,6 +19,11 @@ function toEuroText(priceValue) {
 function toIsoDateFromBestellDatum(bestellDatum) {
     const dateParts = String(bestellDatum || "").split(", ");
     const datumText = dateParts[1] || dateParts[0] || "";
+    const isoMatch = datumText.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+        return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    }
+
     const numerischMatch = datumText.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
     if (numerischMatch) {
         const tag = numerischMatch[1].padStart(2, "0");
@@ -59,6 +64,27 @@ function toIsoDateFromBestellDatum(bestellDatum) {
     return `${jahr}-${monat}-${tag}`;
 }
 
+function formatiereBestellDatumFuerAnzeige(bestellDatum) {
+    const isoDatum = toIsoDateFromBestellDatum(bestellDatum);
+    if (!isoDatum) {
+        return String(bestellDatum || "");
+    }
+
+    const dateObj = new Date(`${isoDatum}T00:00:00`);
+    if (Number.isNaN(dateObj.getTime())) {
+        return String(bestellDatum || "");
+    }
+
+    const wochentag = WOCHENTAGE[dateObj.getDay()];
+    const datumText = dateObj.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+    });
+
+    return `${wochentag}, ${datumText}`;
+}
+
 async function ladeFehlendeKategorienpreise(gruppe) {
     const ausgabeDatum = toIsoDateFromBestellDatum(gruppe.date);
     if (!ausgabeDatum || !gruppe.name) {
@@ -81,6 +107,32 @@ async function ladeFehlendeKategorienpreise(gruppe) {
         Bedienstete: toEuroText(data.PreisBedienstet),
         Gäste: toEuroText(data.PreisGast)
     };
+}
+
+async function ladeBestellungenAusDb(user) {
+    const { data, error } = await supabase
+        .from("Bestellungen")
+        .select("id, bestell_datum, gericht_name, kategorie, preis, image_url")
+        .eq("auth_user_id", user.id)
+        .order("created_at", { ascending: true });
+
+    if (error) {
+        throw new Error("Bestellungen konnten nicht geladen werden: " + error.message);
+    }
+
+    return (data || []).map(function (row) {
+        const isoDatum = toIsoDateFromBestellDatum(row.bestell_datum || "");
+        return {
+            id: row.id,
+            date: formatiereBestellDatumFuerAnzeige(row.bestell_datum || ""),
+            bestellIsoDate: isoDatum,
+            name: row.gericht_name || "",
+            category: row.kategorie || "Studierende",
+            price: row.preis || "-",
+            image: row.image_url || "",
+            priceByCategory: {}
+        };
+    });
 }
 
 async function ermittleVorname(user) {
@@ -188,9 +240,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
     }
 
-    // Bestellliste im HTML und gespeicherte Bestellungen aus localStorage holen
+    // Bestellliste im HTML und gespeicherte Bestellungen aus der DB laden
     const orderList = document.getElementById("order-list");
-    const bestellungen = JSON.parse(localStorage.getItem("bestellungen")) || [];
+    let bestellungen = [];
+
+    try {
+        bestellungen = await ladeBestellungenAusDb(user);
+    } catch (error) {
+        alert(error.message || "Bestellungen konnten nicht geladen werden.");
+    }
 
     if (!orderList) return;
 
@@ -208,17 +266,22 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         // Bestellungen nach Datum + Gericht gruppieren
         const gruppen = {};
-        bestellungen.forEach(function (item, index) {
+        bestellungen.forEach(function (item) {
             const key = `${item.date}||${item.name}`;
             if (!gruppen[key]) {
-                gruppen[key] = { ...item, kategorien: [], indices: [], priceByCategory: {} };
+                gruppen[key] = { ...item, kategorien: [], ids: [], priceByCategory: {} };
+            }
+            if (!gruppen[key].bestellIsoDate && item.bestellIsoDate) {
+                gruppen[key].bestellIsoDate = item.bestellIsoDate;
             }
             if (item.priceByCategory) {
                 Object.assign(gruppen[key].priceByCategory, item.priceByCategory);
             }
             gruppen[key].kategorien.push({ label: item.category || 'Studierende', price: item.price });
             gruppen[key].priceByCategory[item.category || "Studierende"] = item.price;
-            gruppen[key].indices.push(index);
+            if (item.id !== undefined && item.id !== null) {
+                gruppen[key].ids.push(item.id);
+            }
         });
 
         const sortierteGruppen = Object.values(gruppen).sort(function (a, b) {
@@ -278,11 +341,23 @@ document.addEventListener("DOMContentLoaded", async function () {
                     return;
                 }
 
-                // Alle Einträge dieser Gruppe entfernen (von hinten, damit Indizes stimmen)
-                gruppe.indices.slice().sort((a, b) => b - a).forEach(function (i) {
-                    bestellungen.splice(i, 1);
-                });
-                localStorage.setItem("bestellungen", JSON.stringify(bestellungen));
+                const idsToDelete = gruppe.ids || [];
+                if (idsToDelete.length === 0) {
+                    alert("Diese Bestellung konnte nicht eindeutig zugeordnet werden.");
+                    return;
+                }
+
+                const { error: deleteError } = await supabase
+                    .from("Bestellungen")
+                    .delete()
+                    .in("id", idsToDelete)
+                    .eq("auth_user_id", user.id);
+
+                if (deleteError) {
+                    alert("Stornieren fehlgeschlagen: " + deleteError.message);
+                    return;
+                }
+
                 location.reload();
             });
             // Bearbeiten-Button: Mengen direkt im Eintrag anpassen.
@@ -391,23 +466,50 @@ document.addEventListener("DOMContentLoaded", async function () {
                         Object.entries(countsEdit).forEach(function ([label, n]) {
                             for (let i = 0; i < n; i += 1) {
                                 neueEintraege.push({
-                                    date: gruppe.date,
-                                    name: gruppe.name,
-                                    image: gruppe.image,
-                                    category: label,
-                                    price: pricesByLabel[label],
-                                    priceByCategory: { ...pricesByLabel }
+                                    auth_user_id: user.id,
+                                    email: user.email || "",
+                                    gericht_name: gruppe.name,
+                                    bestell_datum: gruppe.bestellIsoDate || toIsoDateFromBestellDatum(gruppe.date),
+                                    kategorie: label,
+                                    preis: pricesByLabel[label],
+                                    image_url: gruppe.image || ""
                                 });
                             }
                         });
 
-                        gruppe.indices.slice().sort((a, b) => b - a).forEach(function (i) {
-                            bestellungen.splice(i, 1);
-                        });
+                        const idsToReplace = gruppe.ids || [];
+                        if (idsToReplace.length === 0) {
+                            alert("Diese Bestellung konnte nicht eindeutig zugeordnet werden.");
+                            return;
+                        }
 
-                        bestellungen.push(...neueEintraege);
-                        localStorage.setItem("bestellungen", JSON.stringify(bestellungen));
-                        location.reload();
+                        supabase
+                            .from("Bestellungen")
+                            .delete()
+                            .in("id", idsToReplace)
+                            .eq("auth_user_id", user.id)
+                            .then(async function ({ error: deleteError }) {
+                                if (deleteError) {
+                                    alert("Bearbeiten fehlgeschlagen: " + deleteError.message);
+                                    return;
+                                }
+
+                                if (neueEintraege.length === 0) {
+                                    location.reload();
+                                    return;
+                                }
+
+                                const { error: insertError } = await supabase
+                                    .from("Bestellungen")
+                                    .insert(neueEintraege);
+
+                                if (insertError) {
+                                    alert("Bearbeiten fehlgeschlagen: " + insertError.message);
+                                    return;
+                                }
+
+                                location.reload();
+                            });
                     });
                 };
 
