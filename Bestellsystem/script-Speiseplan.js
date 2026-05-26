@@ -118,9 +118,9 @@ async function ladeGerichte() {
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 
-    //Zeigt die aktuellen Gerichte für die nächsten 7 Tage an (inklusive heute).
+    //Zeigt die aktuellen Gerichte für die nächsten 3 Wochen an (inklusive heute).
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 16);
+    endDate.setDate(endDate.getDate() + 17);
     ladeGerichtzeitraum(startDate, endDate);
 
     const startIsoDate = toIsoDate(startDate);
