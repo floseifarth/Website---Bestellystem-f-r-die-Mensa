@@ -64,9 +64,9 @@ async function ermittleVorname(user) {
     }
 
     const { data, error } = await supabase
-        .from("RegistriertePersonen")
+        .from("students")
         .select("Vorname")
-        .ilike("E-Mail", email)
+        .ilike("email", email)
         .maybeSingle();
 
     if (!error && data?.Vorname) {

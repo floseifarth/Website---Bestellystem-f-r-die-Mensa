@@ -95,13 +95,13 @@ async function ermittleVorname(user) {
     const email = (user.email || "").trim();
     if (email) {
         const { data, error } = await supabase
-            .from("RegistriertePersonen")
+            .from("students")
             .select("Vorname")
-            .ilike("E-Mail", email)
+            .ilike("email", email)
             .maybeSingle();
 
         if (error) {
-            console.warn("Vorname konnte nicht aus RegistriertePersonen geladen werden:", error.message);
+            console.warn("Vorname konnte nicht aus students geladen werden:", error.message);
         } else {
             const vornameDb = (data?.Vorname || "").trim();
             if (vornameDb) {
@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
+    // Vorname aus Auth-Metadaten oder aus students ermitteln.
     const displayName = await ermittleVorname(user);
 
 

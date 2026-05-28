@@ -9,13 +9,13 @@ async function ermittleVorname(user) {
     const email = (user.email || "").trim();
     if (email) {
         const { data, error } = await supabase
-            .from("RegistriertePersonen")
+            .from("students")
             .select("Vorname")
-            .ilike("E-Mail", email)
+            .ilike("email", email)
             .maybeSingle();
 
         if (error) {
-            console.warn("Vorname konnte nicht aus RegistriertePersonen geladen werden:", error.message);
+            console.warn("Vorname konnte nicht aus students geladen werden:", error.message);
         } else {
             const vornameDb = (data?.Vorname || "").trim();
             if (vornameDb) {
@@ -61,7 +61,7 @@ function renderProfile(profileData, user) {
         return;
     }
 
-    const email = profileData["E-Mail"] || user.email || "-";
+    const email = profileData.email || profileData["E-Mail"] || user.email || "-";
     const fullName = [profileData.Vorname, profileData.Nachname]
         .map((v) => (v || "").trim())
         .filter(Boolean)
@@ -86,9 +86,9 @@ async function ladeProfildaten(user) {
     // Primaere Suche: ueber die hinterlegte E-Mail.
     if (email) {
         const { data, error } = await supabase
-            .from("RegistriertePersonen")
+            .from("students")
             .select("*")
-            .ilike("E-Mail", email)
+            .ilike("email", email)
             .maybeSingle();
 
         if (error) {
@@ -101,9 +101,9 @@ async function ladeProfildaten(user) {
     // Fallback: falls in der Tabelle ein Auth-User-ID Mapping existiert.
     if (!profileData) {
         const { data, error } = await supabase
-            .from("RegistriertePersonen")
+            .from("students")
             .select("*")
-            .eq("id", user.id)
+            .eq("user_id", user.id)
             .maybeSingle();
 
         if (error) {
@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
+    // Vorname aus Auth-Metadaten oder aus students ermitteln.
     const displayName = await ermittleVorname(user);
 
     // Namen rechts oben im Profil-Bereich einsetzen.

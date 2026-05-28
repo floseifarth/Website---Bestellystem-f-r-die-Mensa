@@ -12,9 +12,9 @@ async function ermittleVorname(user) {
     }
 
     const { data, error } = await supabase
-        .from("RegistriertePersonen")
+        .from("students")
         .select("Vorname")
-        .ilike("E-Mail", email)
+        .ilike("email", email)
         .maybeSingle();
 
     if (!error && data?.Vorname) {
@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
+    // Vorname aus Auth-Metadaten oder aus students ermitteln.
     const displayName = await ermittleVorname(user);
 
     // Namen rechts oben im Profil-Bereich einsetzen.
