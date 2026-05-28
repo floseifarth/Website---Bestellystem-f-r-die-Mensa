@@ -50,8 +50,8 @@ function registerAndRedirect() {
         return;
     }
 
-    if (password.length < 8) {
-        setMessage("Passwort muss mindestens 8 Zeichen lang sein.", true);
+    if (password.length < 6) {
+        setMessage("Passwort muss mindestens 6 Zeichen lang sein.", true);
         return;
     }
 

@@ -77,16 +77,17 @@ function getOtpFromInputs() {
     return inputs.map((input) => input.value.trim()).join("");
 }
 
-async function upsertRegistriertePerson(username, email) {
+async function upsertRegistriertePerson(username, email, authUserId) {
     const personRow = {
-        "RZ-Kennung": username,
-        "E-Mail": email
+        username: username,
+        email: email,
+        user_id: authUserId
     };
 
     const { data: existingPerson, error: existingError } = await supabase
-        .from("RegistriertePersonen")
-        .select("RZ-Kennung")
-        .ilike("RZ-Kennung", username)
+        .from("students")
+        .select("email")
+        .ilike("email", email)
         .maybeSingle();
 
     if (existingError) {
@@ -95,23 +96,23 @@ async function upsertRegistriertePerson(username, email) {
 
     if (existingPerson) {
         const { error: updateError } = await supabase
-            .from("RegistriertePersonen")
+            .from("students")
             .update(personRow)
-            .eq("RZ-Kennung", existingPerson["RZ-Kennung"]);
+            .eq("email", existingPerson.email);
 
         if (updateError) {
-            throw new Error("Update in RegistriertePersonen fehlgeschlagen: " + updateError.message);
+            throw new Error("Update in students fehlgeschlagen: " + updateError.message);
         }
 
         return;
     }
 
     const { error: insertError } = await supabase
-        .from("RegistriertePersonen")
+        .from("students")
         .insert([personRow]);
 
     if (insertError) {
-        throw new Error("Eintrag in RegistriertePersonen fehlgeschlagen: " + insertError.message);
+        throw new Error("Eintrag in students fehlgeschlagen: " + insertError.message);
     }
 }
 
@@ -160,7 +161,13 @@ async function codeBestaetigen() {
             return;
         }
 
-        await upsertRegistriertePerson(username, verifiedEmail);
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData?.user?.id) {
+            setMessage("Code korrekt, aber Benutzer-ID konnte nicht gelesen werden.", true);
+            return;
+        }
+
+        await upsertRegistriertePerson(username, verifiedEmail, userData.user.id);
 
         sessionStorage.removeItem("pending-registration");
         setMessage("Code bestätigt. Registrierung abgeschlossen. Weiterleitung...", false);

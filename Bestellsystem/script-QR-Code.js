@@ -1,4 +1,53 @@
 import { supabase } from "./supabaseClient.js";
+import QRCode from "https://esm.sh/qrcode@1.5.4";
+
+const QR_BOX_ID = "qr-code-box";
+const QR_HINT_ID = "qr-code-hinweis";
+
+async function ladeUserIdFuerQr(user) {
+    // Die user_id wird aus students geladen; falls kein Treffer vorhanden ist,
+    // verwenden wir die Auth-ID als sicheren Fallback.
+    const { data, error } = await supabase
+        .from("students")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (error) {
+        throw new Error("user_id konnte nicht aus students geladen werden: " + error.message);
+    }
+
+    return data?.user_id || user.id;
+}
+
+function baueQrPayload(userId) {
+    // Der Scanner kann spaeter die user_id auslesen und serverseitig zuordnen.
+    return `mensa://pickup?user_id=${encodeURIComponent(userId)}`;
+}
+
+function setQrHintText(text) {
+    const hintElement = document.getElementById(QR_HINT_ID);
+    if (hintElement) {
+        hintElement.textContent = text;
+    }
+}
+
+async function rendereQrCode(userId) {
+    const qrBox = document.getElementById(QR_BOX_ID);
+    if (!qrBox) {
+        return;
+    }
+
+    // Aus dem Payload wird eine Data-URL erzeugt und direkt als Bild angezeigt.
+    const qrPayload = baueQrPayload(userId);
+    const dataUrl = await QRCode.toDataURL(qrPayload, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 280
+    });
+
+    qrBox.innerHTML = `<img src="${dataUrl}" alt="Persoenlicher QR-Code" width="280" height="280">`;
+}
 
 async function ermittleVorname(user) {
     const fullName = (user.user_metadata?.full_name || "").trim();
@@ -9,13 +58,13 @@ async function ermittleVorname(user) {
     const email = (user.email || "").trim();
     if (email) {
         const { data, error } = await supabase
-            .from("RegistriertePersonen")
+            .from("students")
             .select("Vorname")
-            .ilike("E-Mail", email)
+            .ilike("email", email)
             .maybeSingle();
 
         if (error) {
-            console.warn("Vorname konnte nicht aus RegistriertePersonen geladen werden:", error.message);
+            console.warn("Vorname konnte nicht aus students geladen werden:", error.message);
         } else {
             const vornameDb = (data?.Vorname || "").trim();
             if (vornameDb) {
@@ -41,7 +90,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // Vorname aus Auth-Metadaten oder aus RegistriertePersonen ermitteln.
+    // Vorname aus Auth-Metadaten oder aus students ermitteln.
     const displayName = await ermittleVorname(user);                       // Fallback: E-Mail-Adresse
 
     // Namen rechts oben im Profil-Bereich einsetzen.
@@ -50,9 +99,18 @@ document.addEventListener("DOMContentLoaded", async function () {
         nameElement.textContent = displayName;
     }
 
-    const qrBox = document.getElementById("qr-code-box");
-    if (qrBox) {
-        qrBox.innerHTML = "<p>QR-Code folgt später aus dem Datenbank-Token.</p>";
+    try {
+        // QR basiert auf der eindeutig zugeordneten user_id des eingeloggten Nutzers.
+        const userIdFuerQr = await ladeUserIdFuerQr(user);
+        await rendereQrCode(userIdFuerQr);
+        setQrHintText("Dieser QR-Code ist eindeutig mit Ihrem Nutzerkonto verknuepft.");
+    } catch (error) {
+        console.error(error);
+        const qrBox = document.getElementById(QR_BOX_ID);
+        if (qrBox) {
+            qrBox.innerHTML = "<p>QR-Code konnte nicht geladen werden.</p>";
+        }
+        setQrHintText("Bitte pruefen Sie, ob in students eine gueltige user_id hinterlegt ist.");
     }
 
 });
