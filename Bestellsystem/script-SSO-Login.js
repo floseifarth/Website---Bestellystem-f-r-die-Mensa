@@ -38,26 +38,9 @@ async function login() {
             return;
         }
 
-        // Schritt 2: Pruefen, ob die Person in der Hochschul-Datenbank "StudentenHochschule" existiert.
-        setMessage("Hochschul-Daten werden geprueft...", false);
+        // Schritt 2: Pruefen, ob die Person in "RegistriertePersonen" registriert ist.
+        setMessage("Registrierungsstatus wird geprueft...", false);
 
-        const { data: student, error: studentError } = await supabase
-            .from("StudentenHochschule")
-            .select('"RZ-Kennung", "E-Mail"')
-            .ilike("RZ-Kennung", username)
-            .maybeSingle();
-
-        if (studentError) {
-            setMessage("Fehler bei der Datenbankabfrage: " + studentError.message, true);
-            return;
-        }
-
-        if (!student) {
-            setMessage("Dieser Benutzername ist nicht in der Hochschuldatenbank vorhanden.", true);
-            return;
-        }
-
-        // Schritt 3: Pruefen, ob die Person bereits in "RegistriertePersonen" registriert ist.
         const { data: person, error: personError } = await supabase
             .from("RegistriertePersonen")
             .select('"RZ-Kennung", "E-Mail"')
@@ -76,7 +59,7 @@ async function login() {
         }
 
         // Registriert: E-Mail bestimmen und Passwort ueber Supabase Auth pruefen.
-        const emailForLogin = person["E-Mail"] || student["E-Mail"];
+        const emailForLogin = person["E-Mail"] || (username + "@hs-esslingen.de");
         if (!emailForLogin) {
             setMessage("Für diesen Benutzer ist keine E-Mail hinterlegt.", true);
             return;

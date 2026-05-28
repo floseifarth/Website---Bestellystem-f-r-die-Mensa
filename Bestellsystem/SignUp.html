@@ -11,49 +11,40 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style-SignUp.css">
+    <link rel="stylesheet" href="style-SSO-Login.css">
 </head>
 
 <body>
+    <img class="logo" src="img/HochschuleEsslingen.svg" alt="">
+
     <div class="anmelde-container">
-        <img class="logo" src="img/HochschuleEsslingen.svg" alt="">
 
-        <p>
-            Sehr geehrter Herr <span id="signup-lastname">Mustermann</span>, <br><br>
-
-            vielen Dank, dass Sie sich für die Anmeldung zum Bestellsystem der Mensa der
-            Hochschule Esslingen entschieden haben.<br><br>
-
-            Da im Rahmen der Nutzung sensible Daten verarbeitet werden, bitte wir Sie, ihre Identität zu bestätigen.
-            <br><br>
-            Wenn Sie den untenstehenden Button klicken, erhalten Sie eine E-Mail an ihre Studierendenadresse mit einem
-            6-stelligen Code.
-            <button id="btn-code-anfordern" class="anmelde-button" type="button">Code anfordern</button>
-            <br><br>
-            Diesen Code geben Sie bitte in das untenstehende Feld ein:
-        </p>
-
-        <p id="signup-message" style="font-size: 13px; text-align: center; min-height: 1.2em;"></p>
-
-        <div class="pin-wrapper">
-            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
-            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
-            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
-            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
-            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
-            <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <span style="font-size: 24px; display: block; text-align: center;"> Konto registrieren </span>
+        <br>
+        <span style="font-size: 12px; font-weight: bold;"> RZ-Benutzername (keine E-Mail-Adresse) </span>
+        <input id="signup-username" type="text" placeholder="RZ-Kennung" class="login-input">
+        <br>
+        <span style="font-size: 12px; font-weight: bold;"> Passwort </span>
+        <div class="passwort-wrapper">
+            <input id="signup-password" type="password" placeholder="Passwort" class="passwort-input">
+            <button id="show-signup-password" type="button" class="show-password-button">
+                <img src="img/eye-icon.svg" alt="Passwort anzeigen" style="width: 20px; height: 20px;">
+            </button>
         </div>
-        <button id="btn-code-bestaetigen" class="anmelde-button" type="button">Code bestätigen</button>
-
-        <br><br>
-        <p>
-            Sollten Sie den Code nicht erhalten haben, überprüfen Sie bitte Ihren Spam-Ordner oder klicken Sie auf den
-            Button, um einen neuen Code anzufordern.
-        </p>
-        <button id="btn-code-neu" class="anmelde-button" type="button">Neuen Code anfordern</button>
-
-
+        <span style="font-size: 12px; font-weight: bold;"> Passwort bestätigen </span>
+        <div class="passwort-wrapper">
+            <input id="signup-password-confirm" type="password" placeholder="Passwort bestätigen" class="passwort-input">
+            <button id="show-signup-password-confirm" type="button" class="show-password-button">
+                <img src="img/eye-icon.svg" alt="Passwort anzeigen" style="width: 20px; height: 20px;">
+            </button>
+        </div>
+        <br>
+        <button id="signup-button" class="anmelde-button" type="button">Registrieren</button>
+        <p style="font-size: 13px; text-align: center; margin-top: 10px;"> Bereits registriert? <a
+                href="SSO-Login.html">Hier anmelden</a> </p>
+        <p id="signup-message" style="font-size: 13px; text-align: center; color: #b42318; min-height: 1.2em;"></p>
     </div>
+
 
     <!-- FUSSZEILE -->
     <footer class="fußzeile">
