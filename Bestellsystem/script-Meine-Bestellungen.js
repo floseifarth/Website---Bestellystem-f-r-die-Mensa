@@ -416,8 +416,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                                 <div class="inline-edit-row" data-label="${label}">
                                     <p class="inline-edit-label">${n}x ${label}</p>
                                     <div class="inline-edit-actions">
-                                        <button type="button" class="vorbestell-btn inline-action-btn inline-plus" ${preisVerfuegbar ? "" : "disabled"}>+</button>
                                         <button type="button" class="vorbestell-btn inline-action-btn inline-minus" ${(preisVerfuegbar && n > 0) ? "" : "disabled"}>-</button>
+                                        <button type="button" class="vorbestell-btn inline-action-btn inline-plus" ${preisVerfuegbar ? "" : "disabled"}>+</button>
                                     </div>
                                 </div>
                             `;

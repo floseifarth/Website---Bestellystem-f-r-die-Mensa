@@ -93,24 +93,21 @@ async function ermittleVorname(user) {
     }
 
     const email = (user.email || "").trim();
-    if (email) {
-        const { data, error } = await supabase
-            .from("students")
-            .select("Vorname")
-            .ilike("email", email)
-            .maybeSingle();
-
-        if (error) {
-            console.warn("Vorname konnte nicht aus students geladen werden:", error.message);
-        } else {
-            const vornameDb = (data?.Vorname || "").trim();
-            if (vornameDb) {
-                return vornameDb;
-            }
-        }
+    if (!email) {
+        return "Gast";
     }
 
-    return "Gast";
+    const { data, error } = await supabase
+        .from("students")
+        .select("Vorname")
+        .ilike("email", email)
+        .maybeSingle();
+
+    if (!error && data?.Vorname) {
+        return data.Vorname;
+    }
+
+    return email;
 }
 
 async function ladeGerichte() {
