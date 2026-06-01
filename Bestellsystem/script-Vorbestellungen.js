@@ -329,7 +329,26 @@ document.addEventListener("DOMContentLoaded", async function () {
             throw new Error(error.message);
         }
     }
+async function sendeBestellbestaetigung(user, orderItems) {
+    const orderSummary = orderItems
+        .map(item => `1x ${item.name} | ${item.date} | ${item.category} | ${item.price}`)
+        .join("\n");
 
+    const totalPrice = orderItems
+        .reduce((sum, item) => sum + parsePrice(item.price), 0);
+
+    await emailjs.send(
+        "service_46zmvnc",
+        "template_ugos18i",
+        {
+    to_email: user.email,
+    name: user.user_metadata?.full_name || user.email,
+    gericht: orderSummary,
+    preis: formatPrice(totalPrice),
+    datum: orderItems[0]?.date || "-"
+}
+    );
+}
     // Beim Abschicken: in der DB speichern und erst dann weiterleiten.
     const abschickenButton = document.querySelector(".vorbestellung-button");
     if (abschickenButton) {
@@ -343,8 +362,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             try {
                 await speichereBestellungen(orderItems);
-
-                window.location.href = "Bestätigungsseite.html";
+                await sendeBestellbestaetigung(user, orderItems);
+                 window.location.href = "Bestätigungsseite.html";
             } catch (error) {
                 alert("Bestellungen konnten nicht gespeichert werden: " + error.message);
             }
