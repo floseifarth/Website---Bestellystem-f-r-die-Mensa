@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bestellsystem</title>
+
+    <!-- Einkopieren der Schriftart -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style-ADMIN-Seite.css">
+</head>
+
+<body>
+    <!-- HEADER: Logo + Datum + Login -->
+    <header class="header">
+        <div class="header-logo-links">
+            <img class="logo-studierendenwerk" src="../img/studierendenwerk-stuttgart.png"
+                alt="Studierendenwerk Stuttgart Logo">
+        </div>
+
+        <div class="header-rechts">
+            <img class="logo" src="../img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+
+            <div class="datum">
+                <span id="datum-header"></span>
+            </div>
+        </div>
+    </header>
+
+
+    <div class="hauptfeld-mitte">
+        <!-- <h1>Admin-Arbeitsbereich</h1> -->
+
+        <div class="admin-workspace" aria-label="Arbeitsflaeche Admin">
+            <section class="admin-zone admin-zone-overview" aria-labelledby="zone-overview-title">
+                <h2 id="zone-overview-title" class="visually-hidden">Tagesuebersicht</h2>
+
+                <div class="admin-role-badge">Admin-Seite Cafeteria</div>
+
+                <section class="admin-panel count-panel" aria-label="Noch nicht abgeholt heute">
+                    <p class="panel-kicker">NOCH NICHT ABGEHOLT HEUTE</p>
+                    <div class="overview-counts" aria-label="Anzahl Vorbestellungen heute">
+                        <article class="count-box count-stud">
+                            <span class="count-number">42</span>
+                            <span class="count-text">Studierende</span>
+                        </article>
+                        <article class="count-box count-bed">
+                            <span class="count-number">18</span>
+                            <span class="count-text">Bedienstete</span>
+                        </article>
+                        <article class="count-box count-gast">
+                            <span class="count-number">7</span>
+                            <span class="count-text">Gaeste</span>
+                        </article>
+                        <article class="count-box count-frei">
+                            <span class="count-number">9</span>
+                            <span class="count-text">Freie Essen</span>
+                        </article>
+                    </div>
+                    <p class="count-total">Gesamt: 76 Essen</p>
+                </section>
+
+                <section class="admin-panel admin-heutiges-gericht" aria-label="Heutiges Gericht">
+                    <p class="panel-kicker">HEUTIGES GERICHT - <span id="datum-titel"></span></p>
+                    <article class="speiseplan-eintrag admin-speiseplan-eintrag">
+                        <div class="speiseplan-mitte">
+                            <img src="../img/pasta.jpg" class="gericht-bild" alt="Heutiges Gericht">
+                            <h4>Pasta Bolognese</h4>
+                            <div class="preise">
+                                <p>Studierende: <strong>3,80 EUR</strong></p>
+                                <p>Bedienstete: <strong>5,20 EUR</strong></p>
+                                <p>Gaeste: <strong>6,40 EUR</strong></p>
+                            </div>
+                            <div class="allergene-box">
+                                <strong>Allergene</strong>
+                                <p>Gluten, Sellerie</p>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+
+                <details class="admin-panel admin-vorschau" aria-label="Vorschau naechste 5 Tage">
+                    <summary>Vorschau naechste 5 Tage</summary>
+                    <div class="vorschau-liste">
+                        <article class="vorschau-item">
+                            <img src="../img/lachs.jpg" alt="Dienstag Gericht">
+                            <div>
+                                <h4>Dienstag, 02.06.2026</h4>
+                                <p>Lachs mit Gemuese</p>
+                                <p>Bestellungen: 53</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/currywurst.jpg" alt="Mittwoch Gericht">
+                            <div>
+                                <h4>Mittwoch, 03.06.2026</h4>
+                                <p>Currywurst mit Pommes</p>
+                                <p>Bestellungen: 61</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/pasta.jpg" alt="Donnerstag Gericht">
+                            <div>
+                                <h4>Donnerstag, 04.06.2026</h4>
+                                <p>Pasta Arrabiata</p>
+                                <p>Bestellungen: 48</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/codebild.jpg" alt="Freitag Gericht">
+                            <div>
+                                <h4>Freitag, 05.06.2026</h4>
+                                <p>Veggie Bowl</p>
+                                <p>Bestellungen: 44</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/pasta.jpg" alt="Montag Gericht">
+                            <div>
+                                <h4>Montag, 08.06.2026</h4>
+                                <p>Pasta Bolognese</p>
+                                <p>Bestellungen: 57</p>
+                            </div>
+                        </article>
+                    </div>
+                </details>
+
+
+            </section>
+
+            <section class="admin-zone admin-zone-scan" aria-labelledby="zone-scan-title">
+                <h2 id="zone-scan-title">Zone B: Scan</h2>
+                <p>QR-Scan-Bereich und Scan-Status.</p>
+            </section>
+
+            <section class="admin-zone admin-zone-edit" aria-labelledby="zone-edit-title">
+                <h2 id="zone-edit-title">Zone C: Bearbeitung</h2>
+                <p>Abholung bestaetigen oder manuell anpassen.</p>
+            </section>
+        </div>
+
+    </div>
+
+
+    <!-- Datum Script -->
+    <script>
+        let heute = new Date();
+
+        let tage = [
+            "Sonntag", "Montag", "Dienstag",
+            "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+        ];
+
+        let wochentag = tage[heute.getDay()];
+        let datum = heute.toLocaleDateString("de-DE");
+        let datumText = wochentag + ", " + datum;
+
+        document.getElementById("datum-header").innerText = datumText;
+        document.getElementById("datum-titel").innerText = datumText;
+    </script>
+
+    <script type="module" src="script-ADMIN-Seite.js"></script>
+
+</body>
+
+</html>
