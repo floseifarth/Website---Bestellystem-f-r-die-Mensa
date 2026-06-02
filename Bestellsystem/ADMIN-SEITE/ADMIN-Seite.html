@@ -45,39 +45,40 @@
                     <p class="panel-kicker">NOCH NICHT ABGEHOLT HEUTE</p>
                     <div class="overview-counts" aria-label="Anzahl Vorbestellungen heute">
                         <article class="count-box count-stud">
-                            <span class="count-number">42</span>
+                            <span id="count-stud-heute" class="count-number">0</span>
                             <span class="count-text">Studierende</span>
                         </article>
                         <article class="count-box count-bed">
-                            <span class="count-number">18</span>
+                            <span id="count-bed-heute" class="count-number">0</span>
                             <span class="count-text">Bedienstete</span>
                         </article>
                         <article class="count-box count-gast">
-                            <span class="count-number">7</span>
+                            <span id="count-gast-heute" class="count-number">0</span>
                             <span class="count-text">Gäste</span>
                         </article>
                         <article class="count-box count-frei">
-                            <span class="count-number">9</span>
+                            <span id="count-frei-heute" class="count-number">0</span>
                             <span class="count-text">Freie Essen</span>
                         </article>
                     </div>
-                    <p class="count-total">Gesamt: 76 Essen</p>
+                    <p id="count-total-heute" class="count-total">Gesamt: 0 Essen</p>
                 </section>
 
                 <section class="admin-panel admin-heutiges-gericht" aria-label="Heutiges Gericht">
                     <p class="panel-kicker">HEUTIGES GERICHT - <span id="datum-titel"></span></p>
                     <article class="speiseplan-eintrag admin-speiseplan-eintrag">
                         <div class="speiseplan-mitte">
-                            <img src="../img/pasta.jpg" class="gericht-bild" alt="Heutiges Gericht">
-                            <h4>Pasta Bolognese</h4>
+                            <img id="heutiges-gericht-bild" src="../img/pasta.jpg" class="gericht-bild"
+                                alt="Heutiges Gericht">
+                            <h4 id="heutiges-gericht-name">Wird geladen...</h4>
                             <div class="preise">
-                                <p>Studierende: <strong>3,80 EUR</strong></p>
-                                <p>Bedienstete: <strong>5,20 EUR</strong></p>
-                                <p>Gaeste: <strong>6,40 EUR</strong></p>
+                                <p>Studierende: <strong id="heutiges-preis-stud">-</strong></p>
+                                <p>Bedienstete: <strong id="heutiges-preis-bed">-</strong></p>
+                                <p>Gaeste: <strong id="heutiges-preis-gast">-</strong></p>
                             </div>
                             <div class="allergene-box">
                                 <strong>Allergene</strong>
-                                <p>Gluten, Sellerie</p>
+                                <p id="heutiges-allergene">-</p>
                             </div>
                         </div>
                     </article>
@@ -85,7 +86,7 @@
 
                 <details class="admin-panel admin-vorschau" aria-label="Vorschau naechste 5 Tage">
                     <summary>Vorschau nächste 5 Tage</summary>
-                    <div class="vorschau-liste">
+                    <div id="vorschau-liste" class="vorschau-liste">
                         <article class="vorschau-item">
                             <img src="../img/lachs.jpg" alt="Dienstag Gericht">
                             <div>
@@ -148,7 +149,8 @@
                 <h2 id="zone-edit-title">Bearbeitung</h2>
                 <div id="zone-c-empty" class="zone-c-empty">
                     <p>Kein QR-Code gescannt.</p>
-                    <button type="button" id="zone-c-open-free-btn" class="zone-c-secondary-btn">Freie Essen
+                    <button type="button" id="zone-c-open-free-btn" class="zone-c-secondary-btn"
+                        aria-controls="zone-c-free-box" aria-expanded="false">Freie Essen
                         vergeben</button>
                     <p id="zone-c-free-feedback" class="zone-c-free-feedback is-hidden" aria-live="polite"></p>
 
@@ -158,25 +160,31 @@
                         <div class="zone-c-adjust-row">
                             <span>Studierende</span>
                             <div class="zone-c-stepper" data-target="zone-c-free-count-stud">
-                                <button type="button" class="zone-c-stepper-minus">-</button>
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Studierende reduzieren">-</button>
                                 <span id="zone-c-free-count-stud">0</span>
-                                <button type="button" class="zone-c-stepper-plus">+</button>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Studierende erhoehen">+</button>
                             </div>
                         </div>
                         <div class="zone-c-adjust-row">
                             <span>Bedienstete</span>
                             <div class="zone-c-stepper" data-target="zone-c-free-count-bed">
-                                <button type="button" class="zone-c-stepper-minus">-</button>
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Bedienstete reduzieren">-</button>
                                 <span id="zone-c-free-count-bed">0</span>
-                                <button type="button" class="zone-c-stepper-plus">+</button>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Bedienstete erhoehen">+</button>
                             </div>
                         </div>
                         <div class="zone-c-adjust-row">
                             <span>Gaeste</span>
                             <div class="zone-c-stepper" data-target="zone-c-free-count-gast">
-                                <button type="button" class="zone-c-stepper-minus">-</button>
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Gaeste reduzieren">-</button>
                                 <span id="zone-c-free-count-gast">0</span>
-                                <button type="button" class="zone-c-stepper-plus">+</button>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Gaeste erhoehen">+</button>
                             </div>
                         </div>
 
@@ -195,14 +203,15 @@
                     <div class="zone-c-card">
                         <p class="zone-c-date">Montag, 02.06.2026</p>
                         <h3>Pasta Bolognese</h3>
-                        <p>42x Studierende</p>
-                        <p>18x Bedienstete</p>
-                        <p>7x Gaeste</p>
-                        <p class="zone-c-total">Gesamt: 67 Bestellungen</p>
+                        <p id="zone-c-card-stud">42x Studierende</p>
+                        <p id="zone-c-card-bed">18x Bedienstete</p>
+                        <p id="zone-c-card-gast">7x Gaeste</p>
+                        <p id="zone-c-card-total" class="zone-c-total">Gesamt: 67 Bestellungen</p>
                     </div>
 
                     <button type="button" id="zone-c-main-btn" class="zone-c-main-btn">67 Bestellungen abgeholt</button>
-                    <button type="button" id="zone-c-toggle-adjust" class="zone-c-secondary-btn">Abholung
+                    <button type="button" id="zone-c-toggle-adjust" class="zone-c-secondary-btn"
+                        aria-controls="zone-c-adjust-box" aria-expanded="false">Abholung
                         anpassen</button>
 
                     <div id="zone-c-adjust-box" class="zone-c-adjust-box is-hidden">
@@ -210,30 +219,36 @@
                         <div class="zone-c-adjust-row">
                             <span>Studierende</span>
                             <div class="zone-c-stepper" data-target="zone-c-adjust-count-stud">
-                                <button type="button" class="zone-c-stepper-minus">-</button>
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Studierende reduzieren">-</button>
                                 <span id="zone-c-adjust-count-stud">42</span>
-                                <button type="button" class="zone-c-stepper-plus">+</button>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Studierende erhoehen">+</button>
                             </div>
                         </div>
                         <div class="zone-c-adjust-row">
                             <span>Bedienstete</span>
                             <div class="zone-c-stepper" data-target="zone-c-adjust-count-bed">
-                                <button type="button" class="zone-c-stepper-minus">-</button>
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Bedienstete reduzieren">-</button>
                                 <span id="zone-c-adjust-count-bed">18</span>
-                                <button type="button" class="zone-c-stepper-plus">+</button>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Bedienstete erhoehen">+</button>
                             </div>
                         </div>
                         <div class="zone-c-adjust-row">
                             <span>Gaeste</span>
                             <div class="zone-c-stepper" data-target="zone-c-adjust-count-gast">
-                                <button type="button" class="zone-c-stepper-minus">-</button>
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Gaeste reduzieren">-</button>
                                 <span id="zone-c-adjust-count-gast">7</span>
-                                <button type="button" class="zone-c-stepper-plus">+</button>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Gaeste erhoehen">+</button>
                             </div>
                         </div>
 
                         <div class="zone-c-actions">
-                            <button type="button" id="zone-c-cancel-btn" class="zone-c-cancel-btn">Zurueck</button>
+                            <button type="button" id="zone-c-cancel-btn" class="zone-c-cancel-btn">Zurück</button>
                             <button type="button" class="zone-c-save-btn">Speichern</button>
                         </div>
                     </div>
