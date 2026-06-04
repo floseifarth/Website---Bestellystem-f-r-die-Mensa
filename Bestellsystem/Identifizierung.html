@@ -15,26 +15,38 @@
 </head>
 
 <body>
+    <!-- HEADER: Logo + Datum + Login -->
+    <header class="header">
+        <div class="header-logo-links">
+            <img class="logo-studierendenwerk" src="img/studierendenwerk-stuttgart.png"
+                alt="Studierendenwerk Stuttgart Logo">
+        </div>
+
+        <div class="header-rechts">
+            <img class="logo" src="img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+
+            <div class="datum">
+                <span id="datum"></span>
+            </div>
+        </div>
+    </header>
+
     <div class="anmelde-container">
-        <img class="logo" src="img/HochschuleEsslingen.svg" alt="">
+        <img class="login-logo" src="img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
 
-        <p>
-            RZ-Kennung: <strong><span id="identifizierung-rz">-</span></strong><br><br>
+        <h1 class="login-titel">Einmalcode</h1>
 
-            vielen Dank, dass Sie sich für die Anmeldung zum Bestellsystem der Mensa der
-            Hochschule Esslingen entschieden haben.<br><br>
-
-            Da im Rahmen der Nutzung sensible Daten verarbeitet werden, bitten wir Sie, Ihre Identität zu bestätigen.
-            <br><br>
-            Wenn Sie den untenstehenden Button klicken, erhalten Sie eine E-Mail an ihre Studierendenadresse mit einem
-            6-stelligen Code.
-            <button id="btn-code-anfordern" class="anmelde-button" type="button">Code anfordern</button>
-            <br><br>
-            Diesen Code geben Sie bitte in das untenstehende Feld ein:
+        <p class="info-text info-center">
+            Ein Einmalcode wird an folgende Hochschule-E-Mail gesendet:
         </p>
 
-        <p id="identifizierung-message" style="font-size: 13px; text-align: center; min-height: 1.2em;"></p>
+        <p class="email-text"><strong><span id="identifizierung-email">-</span></strong></p>
 
+        <button id="btn-code-anfordern" class="anmelde-button" type="button">Einmalcode senden</button>
+
+        <p id="identifizierung-message" class="identifizierung-message"></p>
+
+        <p class="info-text info-center code-label">Einmalcode</p>
         <div class="pin-wrapper">
             <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
             <input class="pin-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
@@ -45,14 +57,21 @@
         </div>
         <button id="btn-code-bestaetigen" class="anmelde-button" type="button">Code bestätigen</button>
 
-        <br><br>
-        <p>
+        <!-- <p>
             Sollten Sie den Code nicht erhalten haben, überprüfen Sie bitte Ihren Spam-Ordner oder klicken Sie auf den
             Button, um einen neuen Code anzufordern.
         </p>
-        <button id="btn-code-neu" class="anmelde-button" type="button">Neuen Code anfordern</button>
+        <button id="btn-code-neu" class="anmelde-button" type="button">Neuen Code anfordern</button> -->
 
 
+    </div>
+
+    <div id="code-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="code-modal-title">
+            <h2 id="code-modal-title" class="modal-title">Code gesendet</h2>
+            <p id="code-modal-text" class="modal-text"></p>
+            <button id="code-modal-ok" class="modal-button" type="button">OK</button>
+        </div>
     </div>
 
     <!-- FUSSZEILE -->
@@ -62,6 +81,21 @@
         <a href="Impressum.html">Impressum</a> |
         <a href="Kontakt.html">Kontakt</a>
     </footer>
+
+    <!-- Datum Script -->
+    <script>
+        let heute = new Date();
+
+        let tage = [
+            "Sonntag", "Montag", "Dienstag",
+            "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+        ];
+
+        let wochentag = tage[heute.getDay()];
+        let datum = heute.toLocaleDateString("de-DE");
+
+        document.getElementById("datum").innerText = wochentag + ", " + datum;
+    </script>
 </body>
 
 <script type="module" src="script-Identifizierung.js"></script>

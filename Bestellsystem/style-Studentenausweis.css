@@ -76,6 +76,17 @@ body {
     font-weight: 600;
 }
 
+.info-text {
+    margin: 0 0 10px;
+    font-size: 16px;
+    line-height: 1.35;
+    color: #333;
+}
+
+.info-center {
+    text-align: center;
+}
+
 .feld-label {
     display: block;
     font-size: 12px;
@@ -93,61 +104,94 @@ body {
     border-radius: 4px;
 }
 
-.passwort-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    margin: 0 0 18px;
+.upload-input {
+    display: none;
 }
 
-.passwort-input {
-    width: 100%;
-    box-sizing: border-box;
-    height: 44px;
-    padding: 10px 44px 10px 10px;
-    border: 1px solid #8d8c8c;
-    border-radius: 4px;
-    margin: 0;
+.upload-dropzone {
+    border: 2px dashed #b8c6d8;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 0 0 12px;
+    background: #f8fbff;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.show-password-button {
-    position: absolute;
-    right: 0;
-    height: 44px;
-    width: 40px;
-    background: none;
-    border: 1px solid #8d8c8c;
-    border-radius: 0 4px 4px 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.upload-dropzone.is-dragover {
+    border-color: #159bd7;
+    background: #eef7ff;
 }
 
-.eye-icon {
-    width: 20px;
-    height: 20px;
-}
-
-
-.anmelde-button {
-    background-color: #183b6c;
-    display: block;
-    color: #ffffff;
-    font-size: 14px;
+.upload-open-button {
     width: 100%;
     height: 44px;
-    padding: 0;
-    margin: 0;
-    border: 1px solid #4768b057;
+    border: 1px solid #0f1f34;
     border-radius: 4px;
+    background: #d8e5f69a;
+    color: #14253c;
     cursor: pointer;
 }
 
-.sektion-linie {
-    height: 1px;
-    background: #dfdfdf;
-    margin: 14px 0 16px;
+.upload-dropzone-text {
+    margin: 8px 0 2px;
+    font-size: 12px;
+    text-align: center;
+    color: #5f6d7e;
+}
+
+.upload-hinweis {
+    margin: 4px 0 0;
+    font-size: 12px;
+    text-align: center;
+    color: #666;
+}
+
+.upload-preview {
+    margin: 0 0 12px;
+    padding: 12px;
+    border: 1px solid #d7d7d7;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.upload-preview.is-hidden {
+    display: none;
+}
+
+.upload-preview-image {
+    width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #efefef;
+}
+
+.upload-preview-image.is-hidden {
+    display: none;
+}
+
+.upload-preview-name {
+    margin: 10px 0;
+    font-size: 13px;
+    color: #444;
+    word-break: break-word;
+}
+
+.upload-clear-button {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #8d8c8c;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #333;
+    cursor: pointer;
+}
+
+.status-message {
+    margin: -6px 0 16px;
+    font-size: 13px;
+    min-height: 1.2em;
+    color: #555;
 }
 
 .registrier-button {
@@ -161,22 +205,6 @@ body {
     border: 1px solid #0f1f34;
     border-radius: 4px;
     cursor: pointer;
-}
-
-.registrier-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    box-sizing: border-box;
-}
-
-.signup-message {
-    font-size: 13px;
-    text-align: center;
-    color: #b42318;
-    min-height: 1.2em;
-    margin: 10px 0 8px;
 }
 
 @media (max-width: 640px) {

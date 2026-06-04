@@ -5,6 +5,28 @@ const usernameFromUrl = (urlParams.get("username") || "").trim().toLowerCase();
 
 let verifiedEmail = null;
 
+function showCodeModal(email) {
+    const overlay = document.getElementById("code-modal");
+    const textElement = document.getElementById("code-modal-text");
+
+    if (textElement) {
+        textElement.textContent = "Der Einmalcode wurde an " + email + " gesendet.";
+    }
+
+    if (overlay) {
+        overlay.classList.add("is-visible");
+        overlay.setAttribute("aria-hidden", "false");
+    }
+}
+
+function hideCodeModal() {
+    const overlay = document.getElementById("code-modal");
+    if (overlay) {
+        overlay.classList.remove("is-visible");
+        overlay.setAttribute("aria-hidden", "true");
+    }
+}
+
 function setMessage(text, isError) {
     const messageElement = document.getElementById("identifizierung-message");
     if (!messageElement) return;
@@ -33,12 +55,7 @@ function buildHsEmail(username) {
 }
 
 function setIdentityPreview(username) {
-    const usernameElement = document.getElementById("identifizierung-rz");
     const emailElement = document.getElementById("identifizierung-email");
-
-    if (usernameElement) {
-        usernameElement.textContent = username || "-";
-    }
 
     if (emailElement) {
         emailElement.textContent = username ? buildHsEmail(username) : "-";
@@ -54,7 +71,7 @@ async function codeAnfordern() {
         }
 
         verifiedEmail = buildHsEmail(username);
-        setMessage("Code wird gesendet...", false);
+        setMessage("Bitte warten ...", false);
 
         const { error: otpError } = await supabase.auth.signInWithOtp({
             email: verifiedEmail,
@@ -66,7 +83,7 @@ async function codeAnfordern() {
             return;
         }
 
-        setMessage("Code wurde an " + verifiedEmail + " gesendet.", false);
+        showCodeModal(verifiedEmail);
     } catch (error) {
         setMessage("Unerwarteter Fehler: " + (error?.message || String(error)), true);
     }
@@ -216,13 +233,22 @@ document.addEventListener("DOMContentLoaded", function () {
         btnAnfordern.addEventListener("click", codeAnfordern);
     }
 
-    const btnNeu = document.getElementById("btn-code-neu");
-    if (btnNeu) {
-        btnNeu.addEventListener("click", codeAnfordern);
-    }
-
     const btnBestaetigen = document.getElementById("btn-code-bestaetigen");
     if (btnBestaetigen) {
         btnBestaetigen.addEventListener("click", codeBestaetigen);
+    }
+
+    const modalOkButton = document.getElementById("code-modal-ok");
+    if (modalOkButton) {
+        modalOkButton.addEventListener("click", hideCodeModal);
+    }
+
+    const modalOverlay = document.getElementById("code-modal");
+    if (modalOverlay) {
+        modalOverlay.addEventListener("click", function (event) {
+            if (event.target === modalOverlay) {
+                hideCodeModal();
+            }
+        });
     }
 });

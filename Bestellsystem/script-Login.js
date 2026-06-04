@@ -91,12 +91,26 @@ async function login() {
 document.addEventListener("DOMContentLoaded", function () {
     // Login-Button und Passwortfeld holen.
     const loginButton = document.getElementById("login-button");
+    const registrierButton = document.getElementById("registrier-button");
+    const usernameInput = document.getElementById("login-username");
     const passwordInput = document.getElementById("login-password");
 
     // Klick auf den Login-Button startet den Login.
     if (loginButton) {
         loginButton.addEventListener("click", function () {
             login();
+        });
+    }
+
+    // Klick auf den Registrieren-Button fuehrt zur SignUp-Seite.
+    if (registrierButton) {
+        registrierButton.addEventListener("click", function () {
+            const enteredUsername = usernameInput?.value?.trim() || "";
+            if (enteredUsername) {
+                window.location.href = "SignUp.html?username=" + encodeURIComponent(enteredUsername);
+                return;
+            }
+            window.location.href = "SignUp.html";
         });
     }
 

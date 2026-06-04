@@ -100,14 +100,14 @@ document.addEventListener("DOMContentLoaded", async function () {
         // QR basiert auf der eindeutig zugeordneten user_id des eingeloggten Nutzers.
         const userIdFuerQr = await ladeUserIdFuerQr(user);
         await rendereQrCode(userIdFuerQr);
-        setQrHintText("Dieser QR-Code ist eindeutig mit Ihrem Nutzerkonto verknuepft.");
+        setQrHintText("Dieser QR-Code ist eindeutig mit Ihrem Nutzerkonto verknüpft.");
     } catch (error) {
         console.error(error);
         const qrBox = document.getElementById(QR_BOX_ID);
         if (qrBox) {
             qrBox.innerHTML = "<p>QR-Code konnte nicht geladen werden.</p>";
         }
-        setQrHintText("Bitte pruefen Sie, ob in students eine gueltige user_id hinterlegt ist.");
+        setQrHintText("Bitte prüfen Sie, ob in students eine gültige user_id hinterlegt ist.");
     }
 
 });
