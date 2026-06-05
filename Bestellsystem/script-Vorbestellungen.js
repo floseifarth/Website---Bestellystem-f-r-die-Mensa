@@ -331,7 +331,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 async function sendeBestellbestaetigung(user, orderItems) {
     const orderSummary = orderItems
-        .map(item => `1x ${item.name} | ${item.date} | ${item.category} | ${item.price}`)
+        .map(item => `1x ${item.name}`)
         .join("\n");
 
     const totalPrice = orderItems
