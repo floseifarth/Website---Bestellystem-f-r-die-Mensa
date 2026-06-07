@@ -4,9 +4,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  reminder:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test
-        run: echo "Erinnerungsmail Workflow läuft erfolgreich"
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js installieren
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Secrets prüfen
+        run: |
+          echo "SUPABASE_URL vorhanden"
+          echo "SUPABASE_ANON_KEY vorhanden"
+          echo "EMAILJS_SERVICE_ID vorhanden"
+          echo "EMAILJS_TEMPLATE_ID vorhanden"
+          echo "EMAILJS_PUBLIC_KEY vorhanden"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          EMAILJS_SERVICE_ID: ${{ secrets.EMAILJS_SERVICE_ID }}
+          EMAILJS_TEMPLATE_ID: ${{ secrets.EMAILJS_TEMPLATE_ID }}
+          EMAILJS_PUBLIC_KEY: ${{ secrets.EMAILJS_PUBLIC_KEY }}
