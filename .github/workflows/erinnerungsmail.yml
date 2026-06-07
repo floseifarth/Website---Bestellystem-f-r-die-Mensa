@@ -2,27 +2,84 @@ name: Erinnerungsmail
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
 
 jobs:
   reminder:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Repository auschecken
-        uses: actions/checkout@v4
-
-      - name: Node.js installieren
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Secrets prüfen
+      - name: Bestellungen prüfen und Erinnerungsmails senden
         run: |
-          echo "SUPABASE_URL vorhanden"
-          echo "SUPABASE_ANON_KEY vorhanden"
-          echo "EMAILJS_SERVICE_ID vorhanden"
-          echo "EMAILJS_TEMPLATE_ID vorhanden"
-          echo "EMAILJS_PUBLIC_KEY vorhanden"
+          node <<'NODE'
+          const SUPABASE_URL = process.env.SUPABASE_URL;
+          const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+          const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+          const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
+          const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
+
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const yyyy = tomorrow.getFullYear();
+          const mm = String(tomorrow.getMonth() + 1).padStart(2, "0");
+          const dd = String(tomorrow.getDate()).padStart(2, "0");
+          const morgen = `${yyyy}-${mm}-${dd}`;
+
+          async function main() {
+            const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${morgen}&abgeholt=eq.false&select=id,email,gericht_name,bestell_datum,preis,kategorie`;
+
+            const response = await fetch(url, {
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+            });
+
+            if (!response.ok) {
+              throw new Error("Supabase Fehler: " + await response.text());
+            }
+
+            const bestellungen = await response.json();
+            console.log(`Gefundene Bestellungen für morgen (${morgen}):`, bestellungen.length);
+
+            for (const bestellung of bestellungen) {
+              if (!bestellung.email) continue;
+
+              const mailResponse = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  service_id: EMAILJS_SERVICE_ID,
+                  template_id: EMAILJS_TEMPLATE_ID,
+                  user_id: EMAILJS_PUBLIC_KEY,
+                  template_params: {
+                    to_email: bestellung.email,
+                    email: bestellung.email,
+                    name: bestellung.email,
+                    gericht: bestellung.gericht_name,
+                    preis: bestellung.preis,
+                    datum: bestellung.bestell_datum,
+                    kategorie: bestellung.kategorie || "-"
+                  },
+                }),
+              });
+
+              if (!mailResponse.ok) {
+                console.log("EmailJS Fehler:", await mailResponse.text());
+              } else {
+                console.log("Erinnerungsmail gesendet an:", bestellung.email);
+              }
+            }
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
