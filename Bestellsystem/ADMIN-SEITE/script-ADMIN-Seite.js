@@ -226,6 +226,10 @@ function numberFromAny(value) {
     return Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
 }
 
+function signedNumberFromAny(value) {
+    const parsed = Number.parseInt(String(value ?? "0"), 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
 
 function toIsoFromUnknownDate(value) {
     if (value === null || value === undefined) {
@@ -277,7 +281,7 @@ async function ladeFreieEssenAusDb() {
         if (rowIso !== todayIso) {
             return acc;
         }
-        return acc + numberFromAny(row.anzahl);
+        return acc + signedNumberFromAny(row.anzahl);
     }, 0);
 
     return {
@@ -312,7 +316,7 @@ async function speichereFreieEssenInDb(delta) {
     const speiseplanId = await ermittleHeutigeSpeiseplanId();
     const payload = {
         datum: todayIso,
-        anzahl: total
+        anzahl: -total
     };
     if (speiseplanId !== null) {
         payload.speiseplan_id = speiseplanId;
@@ -897,13 +901,22 @@ if (zoneCFreeSaveBtn) {
             Gaeste: gast
         };
 
+        const verfuegbar = await ladeFreieEssenAusDb();
+        const verfuegbarGesamt = verfuegbar.Gaeste || 0;
+        if (verfuegbarGesamt <= 0) {
+            setFreeFeedbackState("Kein Kontingent mehr verfügbar.", "free-feedback-error");
+            return;
+        }
+        if (gesamt > verfuegbarGesamt) {
+            setFreeFeedbackState(`Nur ${verfuegbarGesamt} freie Essen verfügbar.`, "free-feedback-error");
+            return;
+        }
+
         try {
             await speichereFreieEssenInDb(delta);
         } catch (error) {
             const state = loadFreeMealState();
-            state.Studierende = (state.Studierende || 0) + stud;
-            state.Bedienstete = (state.Bedienstete || 0) + bed;
-            state.Gaeste = (state.Gaeste || 0) + gast;
+            state.Gaeste = Math.max(0, (state.Gaeste || 0) - gesamt);
             saveFreeMealState(state);
             console.warn("FreieEssen nur lokal gespeichert:", error.message || error);
         }
