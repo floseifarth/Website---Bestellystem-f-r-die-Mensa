@@ -226,10 +226,6 @@ function numberFromAny(value) {
     return Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
 }
 
-function signedNumberFromAny(value) {
-    const parsed = Number.parseInt(String(value ?? "0"), 10);
-    return Number.isNaN(parsed) ? 0 : parsed;
-}
 
 function toIsoFromUnknownDate(value) {
     if (value === null || value === undefined) {
@@ -281,10 +277,9 @@ async function ladeFreieEssenAusDb() {
         if (rowIso !== todayIso) {
             return acc;
         }
-        return acc + signedNumberFromAny(row.anzahl);
+        return acc + numberFromAny(row.anzahl);
     }, 0);
 
-    // Das DB-Schema speichert aktuell nur die Gesamtanzahl freier Essen pro Eintrag.
     return {
         Studierende: 0,
         Bedienstete: 0,
@@ -317,8 +312,7 @@ async function speichereFreieEssenInDb(delta) {
     const speiseplanId = await ermittleHeutigeSpeiseplanId();
     const payload = {
         datum: todayIso,
-        // Buchung zieht vom verfuegbaren Freie-Essen-Kontingent ab.
-        anzahl: -total
+        anzahl: total
     };
     if (speiseplanId !== null) {
         payload.speiseplan_id = speiseplanId;
@@ -335,12 +329,11 @@ function renderOverviewCounts(heuteCounts, freieCounts) {
     const bed = heuteCounts.Bedienstete || 0;
     const gast = heuteCounts.Gaeste || 0;
     const frei = (freieCounts.Studierende || 0) + (freieCounts.Bedienstete || 0) + (freieCounts.Gaeste || 0);
-    const freiAngezeigt = Math.max(0, frei);
 
     if (countStudHeute) countStudHeute.textContent = String(stud);
     if (countBedHeute) countBedHeute.textContent = String(bed);
     if (countGastHeute) countGastHeute.textContent = String(gast);
-    if (countFreiHeute) countFreiHeute.textContent = String(freiAngezeigt);
+    if (countFreiHeute) countFreiHeute.textContent = String(frei);
     // Freie Essen werden separat angezeigt und nicht in die Gesamtzahl addiert.
     if (countTotalHeute) countTotalHeute.textContent = `Gesamt: ${stud + bed + gast} Essen`;
 }
@@ -904,20 +897,13 @@ if (zoneCFreeSaveBtn) {
             Gaeste: gast
         };
 
-        const verfuegbar = await ladeFreieEssenAusDb();
-        const verfuegbarGesamt = (verfuegbar.Studierende || 0) + (verfuegbar.Bedienstete || 0) + (verfuegbar.Gaeste || 0);
-        if (gesamt > verfuegbarGesamt) {
-            setFreeFeedbackState(`Nur ${Math.max(0, verfuegbarGesamt)} freie Essen verfuegbar.`, "free-feedback-error");
-            return;
-        }
-
         try {
             await speichereFreieEssenInDb(delta);
         } catch (error) {
             const state = loadFreeMealState();
-            state.Studierende = Math.max(0, (state.Studierende || 0) - stud);
-            state.Bedienstete = Math.max(0, (state.Bedienstete || 0) - bed);
-            state.Gaeste = Math.max(0, (state.Gaeste || 0) - gast);
+            state.Studierende = (state.Studierende || 0) + stud;
+            state.Bedienstete = (state.Bedienstete || 0) + bed;
+            state.Gaeste = (state.Gaeste || 0) + gast;
             saveFreeMealState(state);
             console.warn("FreieEssen nur lokal gespeichert:", error.message || error);
         }
