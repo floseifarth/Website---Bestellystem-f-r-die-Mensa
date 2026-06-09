@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bestellsystem</title>
+
+    <!-- Einkopieren der Schriftart -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style-ADMIN-Seite.css">
+</head>
+
+<body>
+    <!-- HEADER: Logo + Datum + Login -->
+    <header class="header">
+        <div class="header-logo-links">
+            <img class="logo-studierendenwerk" src="../img/studierendenwerk-stuttgart.png"
+                alt="Studierendenwerk Stuttgart Logo">
+        </div>
+
+        <div class="header-rechts">
+            <img class="logo" src="../img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+
+            <div class="datum">
+                <span id="datum-header"></span>
+            </div>
+        </div>
+    </header>
+
+
+    <div class="hauptfeld-mitte">
+        <!-- <h1>Admin-Arbeitsbereich</h1> -->
+
+        <div class="admin-workspace" aria-label="Arbeitsflaeche Admin">
+            <section class="admin-zone admin-zone-overview" aria-labelledby="zone-overview-title">
+                <h2 id="zone-overview-title" class="visually-hidden">Tagesuebersicht</h2>
+
+                <div class="admin-role-badge">Admin-Seite Cafeteria</div>
+
+                <section class="admin-panel count-panel" aria-label="Noch nicht abgeholt heute">
+                    <p class="panel-kicker">NOCH NICHT ABGEHOLT HEUTE</p>
+                    <div class="overview-counts" aria-label="Anzahl Vorbestellungen heute">
+                        <article class="count-box count-stud">
+                            <span id="count-stud-heute" class="count-number">0</span>
+                            <span class="count-text">Studierende</span>
+                        </article>
+                        <article class="count-box count-bed">
+                            <span id="count-bed-heute" class="count-number">0</span>
+                            <span class="count-text">Bedienstete</span>
+                        </article>
+                        <article class="count-box count-gast">
+                            <span id="count-gast-heute" class="count-number">0</span>
+                            <span class="count-text">Gäste</span>
+                        </article>
+                        <article class="count-box count-frei">
+                            <span id="count-frei-heute" class="count-number">0</span>
+                            <span class="count-text">Freie Essen</span>
+                        </article>
+                    </div>
+                    <p id="count-total-heute" class="count-total">Gesamt: 0 Essen</p>
+                </section>
+
+                <section class="admin-panel admin-heutiges-gericht" aria-label="Heutiges Gericht">
+                    <p class="panel-kicker">HEUTIGES GERICHT - <span id="datum-titel"></span></p>
+                    <article class="speiseplan-eintrag admin-speiseplan-eintrag">
+                        <div class="speiseplan-mitte">
+                            <img id="heutiges-gericht-bild" src="../img/pasta.jpg" class="gericht-bild"
+                                alt="Heutiges Gericht">
+                            <h4 id="heutiges-gericht-name">Wird geladen...</h4>
+                            <div class="preise">
+                                <p>Studierende: <strong id="heutiges-preis-stud">-</strong></p>
+                                <p>Bedienstete: <strong id="heutiges-preis-bed">-</strong></p>
+                                <p>Gaeste: <strong id="heutiges-preis-gast">-</strong></p>
+                            </div>
+                            <div class="allergene-box">
+                                <strong>Allergene</strong>
+                                <p id="heutiges-allergene">-</p>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+
+                <details class="admin-panel admin-vorschau" aria-label="Vorschau naechste 5 Tage">
+                    <summary>Vorschau nächste 5 Tage</summary>
+                    <div id="vorschau-liste" class="vorschau-liste">
+                        <article class="vorschau-item">
+                            <img src="../img/lachs.jpg" alt="Dienstag Gericht">
+                            <div>
+                                <h4>Dienstag, 02.06.2026</h4>
+                                <p>Lachs mit Gemuese</p>
+                                <p class="vorschau-total">Bestellungen gesamt: 80</p>
+                                <p class="vorschau-detail">Stud: 53 | Bed: 18 | Gast: 7 | Frei: 2</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/currywurst.jpg" alt="Mittwoch Gericht">
+                            <div>
+                                <h4>Mittwoch, 03.06.2026</h4>
+                                <p>Currywurst mit Pommes</p>
+                                <p class="vorschau-total">Bestellungen gesamt: 61</p>
+                                <p class="vorschau-detail">Stud: 40 | Bed: 14 | Gast: 5 | Frei: 2</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/pasta.jpg" alt="Donnerstag Gericht">
+                            <div>
+                                <h4>Donnerstag, 04.06.2026</h4>
+                                <p>Pasta Arrabiata</p>
+                                <p class="vorschau-total">Bestellungen gesamt: 48</p>
+                                <p class="vorschau-detail">Stud: 31 | Bed: 10 | Gast: 5 | Frei: 2</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/codebild.jpg" alt="Freitag Gericht">
+                            <div>
+                                <h4>Freitag, 05.06.2026</h4>
+                                <p>Veggie Bowl</p>
+                                <p class="vorschau-total">Bestellungen gesamt: 44</p>
+                                <p class="vorschau-detail">Stud: 28 | Bed: 9 | Gast: 5 | Frei: 2</p>
+                            </div>
+                        </article>
+                        <article class="vorschau-item">
+                            <img src="../img/pasta.jpg" alt="Montag Gericht">
+                            <div>
+                                <h4>Montag, 08.06.2026</h4>
+                                <p>Pasta Bolognese</p>
+                                <p class="vorschau-total">Bestellungen gesamt: 57</p>
+                                <p class="vorschau-detail">Stud: 37 | Bed: 12 | Gast: 6 | Frei: 2</p>
+                            </div>
+                        </article>
+                    </div>
+                </details>
+
+
+            </section>
+
+            <section class="admin-zone admin-zone-scan" aria-labelledby="zone-scan-title">
+                <h2 id="zone-scan-title">Scan</h2>
+                <p class="scan-hint">QR-Code des Nutzers scannen</p>
+                <button type="button" id="scan-qr-btn" class="scan-qr-btn">Kamera öffnen</button>
+                <p id="scan-status" class="scan-status" aria-live="polite">Bereit zum Scannen.</p>
+            </section>
+
+            <section class="admin-zone admin-zone-edit" aria-labelledby="zone-edit-title">
+                <h2 id="zone-edit-title">Bearbeitung</h2>
+                <div id="zone-c-empty" class="zone-c-empty">
+                    <p>Kein QR-Code gescannt.</p>
+                    <button type="button" id="zone-c-open-free-btn" class="zone-c-secondary-btn"
+                        aria-controls="zone-c-free-box" aria-expanded="false">Freie Essen
+                        vergeben</button>
+                    <p id="zone-c-free-feedback" class="zone-c-free-feedback is-hidden" aria-live="polite"></p>
+
+                    <div id="zone-c-free-box" class="zone-c-free-box is-hidden">
+                        <h4>Freies Essen vergeben</h4>
+
+                        <div class="zone-c-adjust-row">
+                            <span>Studierende</span>
+                            <div class="zone-c-stepper" data-target="zone-c-free-count-stud">
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Studierende reduzieren">-</button>
+                                <span id="zone-c-free-count-stud">0</span>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Studierende erhoehen">+</button>
+                            </div>
+                        </div>
+                        <div class="zone-c-adjust-row">
+                            <span>Bedienstete</span>
+                            <div class="zone-c-stepper" data-target="zone-c-free-count-bed">
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Bedienstete reduzieren">-</button>
+                                <span id="zone-c-free-count-bed">0</span>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Bedienstete erhoehen">+</button>
+                            </div>
+                        </div>
+                        <div class="zone-c-adjust-row">
+                            <span>Gaeste</span>
+                            <div class="zone-c-stepper" data-target="zone-c-free-count-gast">
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Gaeste reduzieren">-</button>
+                                <span id="zone-c-free-count-gast">0</span>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Gaeste erhoehen">+</button>
+                            </div>
+                        </div>
+
+
+                        <div class="zone-c-actions">
+                            <button type="button" id="zone-c-free-cancel-btn"
+                                class="zone-c-cancel-btn">Abbrechen</button>
+                            <button type="button" id="zone-c-free-save-btn" class="zone-c-save-btn">Buchen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="zone-c-result" class="zone-c-result is-hidden">
+                    <div id="zone-c-status" class="zone-c-status zone-c-success">Bestellung gefunden</div>
+
+                    <div class="zone-c-card">
+                        <p class="zone-c-date">Montag, 02.06.2026</p>
+                        <h3>Pasta Bolognese</h3>
+                        <p id="zone-c-card-stud">42x Studierende</p>
+                        <p id="zone-c-card-bed">18x Bedienstete</p>
+                        <p id="zone-c-card-gast">7x Gaeste</p>
+                        <p id="zone-c-card-total" class="zone-c-total">Gesamt: 67 Bestellungen</p>
+                    </div>
+
+                    <button type="button" id="zone-c-main-btn" class="zone-c-main-btn">67 Bestellungen abgeholt</button>
+                    <button type="button" id="zone-c-toggle-adjust" class="zone-c-secondary-btn"
+                        aria-controls="zone-c-adjust-box" aria-expanded="false">Abholung
+                        anpassen</button>
+
+                    <div id="zone-c-adjust-box" class="zone-c-adjust-box is-hidden">
+                        <h4>Abholung anpassen</h4>
+                        <div class="zone-c-adjust-row">
+                            <span>Studierende</span>
+                            <div class="zone-c-stepper" data-target="zone-c-adjust-count-stud">
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Studierende reduzieren">-</button>
+                                <span id="zone-c-adjust-count-stud">42</span>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Studierende erhoehen">+</button>
+                            </div>
+                        </div>
+                        <div class="zone-c-adjust-row">
+                            <span>Bedienstete</span>
+                            <div class="zone-c-stepper" data-target="zone-c-adjust-count-bed">
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Bedienstete reduzieren">-</button>
+                                <span id="zone-c-adjust-count-bed">18</span>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Bedienstete erhoehen">+</button>
+                            </div>
+                        </div>
+                        <div class="zone-c-adjust-row">
+                            <span>Gaeste</span>
+                            <div class="zone-c-stepper" data-target="zone-c-adjust-count-gast">
+                                <button type="button" class="zone-c-stepper-minus"
+                                    aria-label="Gaeste reduzieren">-</button>
+                                <span id="zone-c-adjust-count-gast">7</span>
+                                <button type="button" class="zone-c-stepper-plus"
+                                    aria-label="Gaeste erhoehen">+</button>
+                            </div>
+                        </div>
+
+                        <div class="zone-c-actions">
+                            <button type="button" id="zone-c-cancel-btn" class="zone-c-cancel-btn">Zurück</button>
+                            <button type="button" class="zone-c-save-btn">Speichern</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+
+    <!-- Datum Script -->
+    <script>
+        let heute = new Date();
+
+        let tage = [
+            "Sonntag", "Montag", "Dienstag",
+            "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+        ];
+
+        let wochentag = tage[heute.getDay()];
+        let datum = heute.toLocaleDateString("de-DE");
+        let datumText = wochentag + ", " + datum;
+
+        document.getElementById("datum-header").innerText = datumText;
+        document.getElementById("datum-titel").innerText = datumText;
+    </script>
+
+    <script type="module" src="script-ADMIN-Seite.js"></script>
+
+</body>
+
+</html>
