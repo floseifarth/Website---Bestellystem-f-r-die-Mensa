@@ -14,6 +14,41 @@ function setMessage(text, isError) {
     // messageElement.style.color = isError ? "#b42318" : "#027a48";
 }
 
+async function istAdminNutzer(email) {
+    const loginEmail = String(email || "").trim();
+    const rzKennung = loginEmail.split("@")[0] || "";
+
+    try {
+        if (rzKennung) {
+            const { data: byRz, error: rzError } = await supabase
+                .from("AdminNutzer")
+                .select("id")
+                .eq("RZ-Kennung", rzKennung)
+                .maybeSingle();
+
+            if (!rzError && byRz) {
+                return true;
+            }
+        }
+
+        if (loginEmail) {
+            const { data: byEmail, error: mailError } = await supabase
+                .from("AdminNutzer")
+                .select("id")
+                .ilike("E-Mail", loginEmail)
+                .maybeSingle();
+
+            if (!mailError && byEmail) {
+                return true;
+            }
+        }
+    } catch (error) {
+        console.warn("Admin-Erkennung fehlgeschlagen:", error?.message || error);
+    }
+
+    return false;
+}
+
 
 let istRegistrierung = false; // Lokaler Zustand, um zwischen Anmelde- und Registrierungsmodus zu wechseln.
 // Wechselt zwischen Anmelde- und Registrierungsmodus.
@@ -107,7 +142,8 @@ async function login() {
 
     // Erfolgsfall: Erfolgsmeldung anzeigen und auf Startseite weiterleiten.
     setMessage("Login erfolgreich. Weiterleitung...", false);
-    window.location.href = "Startseite.html";
+    const isAdmin = await istAdminNutzer(email);
+    window.location.href = isAdmin ? "ADMIN-SEITE/ADMIN-Seite.html" : "startseite.html";
 }
 
 // Wartet, bis das HTML vollstaendig geladen ist,

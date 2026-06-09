@@ -19,6 +19,62 @@ function istUngueltigeLoginKombination(errorMessage) {
     return msg.includes("invalid login credentials") || msg.includes("invalid credentials");
 }
 
+async function istAdminNutzer(username, email) {
+    const rzKennung = String(username || "").trim();
+    const loginEmail = String(email || "").trim();
+
+    try {
+        if (rzKennung) {
+            const { data: byRz, error: rzError } = await supabase
+                .from("AdminNutzer")
+                .select("id")
+                .eq("RZ-Kennung", rzKennung)
+                .maybeSingle();
+
+            if (!rzError && byRz) {
+                return true;
+            }
+        }
+
+        if (loginEmail) {
+            const { data: byEmail, error: mailError } = await supabase
+                .from("AdminNutzer")
+                .select("id")
+                .ilike("E-Mail", loginEmail)
+                .maybeSingle();
+
+            if (!mailError && byEmail) {
+                return true;
+            }
+        }
+    } catch (error) {
+        console.warn("Admin-Erkennung fehlgeschlagen:", error?.message || error);
+    }
+
+    return false;
+}
+
+async function ladeAdminEmailByRzKennung(username) {
+    const rzKennung = String(username || "").trim();
+    if (!rzKennung) {
+        return null;
+    }
+
+    const { data, error } = await supabase
+        .from("AdminNutzer")
+        .select("E-Mail")
+        .eq("RZ-Kennung", rzKennung)
+        .maybeSingle();
+
+    if (error) {
+        console.warn("Admin-E-Mail konnte nicht geladen werden:", error.message || error);
+        return null;
+    }
+
+    const adminEmail = String(data?.["E-Mail"] || "").trim().toLowerCase();
+    return adminEmail || null;
+}
+
 
 // Fuehrt den eigentlichen Login-Prozess aus.
 async function login() {
@@ -44,7 +100,9 @@ async function login() {
         }
 
         // Schritt 2: Erst Auth-Login pruefen.
-        const emailForLogin = username + "@hs-esslingen.de";
+        const defaultEmailForLogin = username + "@hs-esslingen.de";
+        const adminEmailForLogin = await ladeAdminEmailByRzKennung(username);
+        const emailForLogin = adminEmailForLogin || defaultEmailForLogin;
         setMessage("Anmeldedaten werden geprueft...", false);
 
         const { error: loginError } = await supabase.auth.signInWithPassword({
@@ -59,7 +117,7 @@ async function login() {
                 const { data: person, error: personError } = await supabase
                     .from("students")
                     .select("email")
-                    .ilike("email", emailForLogin)
+                    .ilike("email", defaultEmailForLogin)
                     .maybeSingle();
 
                 if (personError) {
@@ -67,7 +125,11 @@ async function login() {
                     return;
                 }
 
-                if (person) {
+                if (person || adminEmailForLogin) {
+                    if (adminEmailForLogin) {
+                        setMessage("Login fehlgeschlagen: Passwort falsch oder Admin-Auth-Konto fehlt.", true);
+                        return;
+                    }
                     setMessage("Falsches Passwort. Bitte erneut eingeben.", true);
                     return;
                 }
@@ -79,7 +141,8 @@ async function login() {
             return;
         }
 
-        window.location.href = "startseite.html";
+        const isAdmin = await istAdminNutzer(username, emailForLogin);
+        window.location.href = isAdmin ? "ADMIN-SEITE/ADMIN-Seite.html" : "startseite.html";
         return;
     } catch (error) {
         setMessage("Unerwarteter Fehler: " + (error?.message || String(error)), true);
