@@ -14,6 +14,11 @@ function setMessage(text, isError) {
     // messageElement.style.color = isError ? "#b42318" : "#027a48";
 }
 
+function istUngueltigeLoginKombination(errorMessage) {
+    const msg = (errorMessage || "").toLowerCase();
+    return msg.includes("invalid login credentials") || msg.includes("invalid credentials");
+}
+
 
 let istRegistrierung = false; // Lokaler Zustand, um zwischen Anmelde- und Registrierungsmodus zu wechseln.
 // Wechselt zwischen Anmelde- und Registrierungsmodus.
@@ -101,6 +106,10 @@ async function login() {
 
     // Fehlerfall: Fehlermeldung anzeigen und Funktion beenden.
     if (error) {
+        if (istUngueltigeLoginKombination(error.message)) {
+            setMessage("E-Mail oder Passwort ist falsch.", true);
+            return;
+        }
         setMessage("Login fehlgeschlagen: " + error.message, true);
         return;
     }

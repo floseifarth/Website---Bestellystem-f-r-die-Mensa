@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const MAX_GERICHTE_PRO_TAG = 2;
 
 function toIsoDate(date) {
     const year = date.getFullYear();
@@ -101,6 +102,63 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     let orderItems = [];
+    let bestehendeBestellungenProTag = {};
+
+    function zaehleEintraegeProTag(items) {
+        const counts = {};
+        (items || []).forEach(function (item) {
+            const isoDate = item.bestellIsoDate;
+            if (!isoDate) return;
+            counts[isoDate] = (counts[isoDate] || 0) + 1;
+        });
+        return counts;
+    }
+
+    async function ladeBestehendeBestellungenProTag(userId, isoDates) {
+        const tage = Array.from(new Set((isoDates || []).filter(Boolean)));
+        if (tage.length === 0) {
+            return {};
+        }
+
+        const { data, error } = await supabase
+            .from("Bestellungen")
+            .select("bestell_datum")
+            .eq("auth_user_id", userId)
+            .in("bestell_datum", tage);
+
+        if (error) {
+            throw new Error("Bestellmengen konnten nicht geprüft werden: " + error.message);
+        }
+
+        const counts = {};
+        (data || []).forEach(function (row) {
+            const isoDate = row.bestell_datum;
+            if (!isoDate) return;
+            counts[isoDate] = (counts[isoDate] || 0) + 1;
+        });
+
+        return counts;
+    }
+
+    async function ladeAlleBestehendenBestellungenProTag(userId) {
+        const { data, error } = await supabase
+            .from("Bestellungen")
+            .select("bestell_datum")
+            .eq("auth_user_id", userId);
+
+        if (error) {
+            throw new Error("Bestellmengen konnten nicht geprüft werden: " + error.message);
+        }
+
+        const counts = {};
+        (data || []).forEach(function (row) {
+            const isoDate = row.bestell_datum;
+            if (!isoDate) return;
+            counts[isoDate] = (counts[isoDate] || 0) + 1;
+        });
+
+        return counts;
+    }
 
     function updateOrderSummary() {
         const orderList = document.getElementById("order-list");
@@ -162,6 +220,16 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (!selectedPrice || selectedPrice === "-") {
             alert("Für diese Kategorie ist aktuell kein Preis hinterlegt.");
+            return;
+        }
+
+        const bestehendeAnzahl = bestehendeBestellungenProTag[dish.isoDate] || 0;
+        const anzahlImWarenkorb = orderItems.filter(function (item) {
+            return item.bestellIsoDate === dish.isoDate;
+        }).length;
+
+        if (bestehendeAnzahl + anzahlImWarenkorb >= MAX_GERICHTE_PRO_TAG) {
+            alert(`Maximal ${MAX_GERICHTE_PRO_TAG} Gerichte pro Tag erlaubt.`);
             return;
         }
 
@@ -321,6 +389,20 @@ document.addEventListener("DOMContentLoaded", async function () {
             image_url: item.image || ""
         }));
 
+        const anzahlNeuProTag = zaehleEintraegeProTag(orderItems);
+        const isoDates = Object.keys(anzahlNeuProTag);
+        const bestehendeProTagAktuell = await ladeBestehendeBestellungenProTag(user.id, isoDates);
+
+        const limitUeberschritten = isoDates.find(function (isoDate) {
+            const bereits = bestehendeProTagAktuell[isoDate] || 0;
+            const neu = anzahlNeuProTag[isoDate] || 0;
+            return bereits + neu > MAX_GERICHTE_PRO_TAG;
+        });
+
+        if (limitUeberschritten) {
+            throw new Error(`Maximal ${MAX_GERICHTE_PRO_TAG} Gerichte pro Tag erlaubt.`);
+        }
+
         const { error } = await supabase
             .from("Bestellungen")
             .insert(rows);
@@ -329,26 +411,26 @@ document.addEventListener("DOMContentLoaded", async function () {
             throw new Error(error.message);
         }
     }
-async function sendeBestellbestaetigung(user, orderItems) {
-    const orderSummary = orderItems
-        .map(item => `1x ${item.name} | ${item.date} | ${item.category} | ${item.price}`)
-        .join("\n");
+    async function sendeBestellbestaetigung(user, orderItems) {
+        const orderSummary = orderItems
+            .map(item => `1x ${item.name} | ${item.date} | ${item.category} | ${item.price}`)
+            .join("\n");
 
-    const totalPrice = orderItems
-        .reduce((sum, item) => sum + parsePrice(item.price), 0);
+        const totalPrice = orderItems
+            .reduce((sum, item) => sum + parsePrice(item.price), 0);
 
-    await emailjs.send(
-        "service_46zmvnc",
-        "template_ugos18i",
-        {
-    to_email: user.email,
-    name: user.user_metadata?.full_name || user.email,
-    gericht: orderSummary,
-    preis: formatPrice(totalPrice),
-    datum: orderItems[0]?.date || "-"
-}
-    );
-}
+        await emailjs.send(
+            "service_46zmvnc",
+            "template_ugos18i",
+            {
+                to_email: user.email,
+                name: user.user_metadata?.full_name || user.email,
+                gericht: orderSummary,
+                preis: formatPrice(totalPrice),
+                datum: orderItems[0]?.date || "-"
+            }
+        );
+    }
     // Beim Abschicken: in der DB speichern und erst dann weiterleiten.
     const abschickenButton = document.querySelector(".vorbestellung-button");
     if (abschickenButton) {
@@ -363,7 +445,7 @@ async function sendeBestellbestaetigung(user, orderItems) {
             try {
                 await speichereBestellungen(orderItems);
                 await sendeBestellbestaetigung(user, orderItems);
-                 window.location.href = "Bestätigungsseite.html";
+                window.location.href = "Bestätigungsseite.html";
             } catch (error) {
                 alert("Bestellungen konnten nicht gespeichert werden: " + error.message);
             }
@@ -371,6 +453,12 @@ async function sendeBestellbestaetigung(user, orderItems) {
     }
 
     updateOrderSummary();
+    try {
+        bestehendeBestellungenProTag = await ladeAlleBestehendenBestellungenProTag(user.id);
+    } catch (error) {
+        console.warn("Bestehende Bestellungen pro Tag konnten nicht geladen werden:", error);
+        bestehendeBestellungenProTag = {};
+    }
     ladeGerichtzeitraum();
     await ladeGerichteDerUebernaechstenWoche();
 });
