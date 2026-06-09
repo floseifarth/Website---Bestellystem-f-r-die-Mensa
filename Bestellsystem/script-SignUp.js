@@ -9,6 +9,15 @@ function normalizeUsername(rawValue) {
     return (rawValue || "").trim().replace(/@hs-esslingen\.de$/i, "").toLowerCase();
 }
 
+function updateDerivedEmailField() {
+    const usernameElement = document.getElementById("signup-username");
+    const emailElement = document.getElementById("signup-email");
+    if (!usernameElement || !emailElement) return;
+
+    const username = normalizeUsername(usernameElement.value);
+    emailElement.value = username ? username + "@hs-esslingen.de" : "@hs-esslingen.de";
+}
+
 function togglePasswordVisibility(inputId, buttonId) {
     const input = document.getElementById(inputId);
     const button = document.getElementById(buttonId);
@@ -75,9 +84,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const prefilledUsername = normalizeUsername(params.get("username") || "");
 
     const usernameElement = document.getElementById("signup-username");
+    const emailElement = document.getElementById("signup-email");
+
+    if (emailElement) {
+        emailElement.value = "@hs-esslingen.de";
+    }
+
     if (usernameElement && prefilledUsername) {
         usernameElement.value = prefilledUsername;
     }
+
+    if (usernameElement) {
+        usernameElement.addEventListener("input", updateDerivedEmailField);
+    }
+
+    updateDerivedEmailField();
 
     const signupButton = document.getElementById("signup-button");
     if (signupButton) {

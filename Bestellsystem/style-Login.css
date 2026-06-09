@@ -129,10 +129,8 @@ body {
     height: 20px;
 }
 
-
 .anmelde-button {
     background-color: #183b6c;
-    display: block;
     color: #ffffff;
     font-size: 14px;
     width: 100%;
@@ -144,10 +142,26 @@ body {
     cursor: pointer;
 }
 
+.login-message {
+    font-size: 13px;
+    text-align: center;
+    color: #b42318;
+    min-height: 1.2em;
+    margin: 10px 0 8px;
+}
+
 .sektion-linie {
     height: 1px;
     background: #dfdfdf;
     margin: 14px 0 16px;
+}
+
+.registrierung-text {
+    margin: 0 0 10px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
 }
 
 .registrier-button {
@@ -161,22 +175,6 @@ body {
     border: 1px solid #0f1f34;
     border-radius: 4px;
     cursor: pointer;
-}
-
-.registrier-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    box-sizing: border-box;
-}
-
-.signup-message {
-    font-size: 13px;
-    text-align: center;
-    color: #b42318;
-    min-height: 1.2em;
-    margin: 10px 0 8px;
 }
 
 @media (max-width: 640px) {
