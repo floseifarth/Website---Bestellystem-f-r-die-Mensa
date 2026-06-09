@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const STANDARD_KATEGORIEN = ["Studierende", "Bedienstete", "Gäste"];
+const MAX_GERICHTE_PRO_TAG = 3;
 
 function toEuroText(priceValue) {
     if (priceValue === null || priceValue === undefined || priceValue === "") {
@@ -112,8 +113,9 @@ async function ladeFehlendeKategorienpreise(gruppe) {
 async function ladeBestellungenAusDb(user) {
     const { data, error } = await supabase
         .from("Bestellungen")
-        .select("id, bestell_datum, gericht_name, kategorie, preis, image_url")
+        .select("id, bestell_datum, gericht_name, kategorie, preis, image_url, status")
         .eq("auth_user_id", user.id)
+        .eq("status", "bestellt")
         .order("created_at", { ascending: true });
 
     if (error) {
@@ -243,6 +245,23 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Bestellliste im HTML und gespeicherte Bestellungen aus der DB laden
     const orderList = document.getElementById("order-list");
     let bestellungen = [];
+
+    function zaehleBestellungenAnTagOhneIds(isoDate, idsZumAusschliessen) {
+        if (!isoDate) {
+            return 0;
+        }
+
+        const ausschluss = new Set(idsZumAusschliessen || []);
+        return bestellungen.filter(function (item) {
+            return item.bestellIsoDate === isoDate && !ausschluss.has(item.id);
+        }).length;
+    }
+
+    function zaehleKategorien(countsObjekt) {
+        return Object.values(countsObjekt || {}).reduce(function (summe, anzahl) {
+            return summe + (anzahl || 0);
+        }, 0);
+    }
 
     try {
         bestellungen = await ladeBestellungenAusDb(user);
@@ -451,6 +470,15 @@ document.addEventListener("DOMContentLoaded", async function () {
 
                         if (plusBtn && !plusBtn.disabled) {
                             plusBtn.addEventListener("click", function () {
+                                const isoDate = gruppe.bestellIsoDate || toIsoDateFromBestellDatum(gruppe.date);
+                                const anzahlAnDiesemTagOhneGruppe = zaehleBestellungenAnTagOhneIds(isoDate, gruppe.ids || []);
+                                const neueAnzahlInDieserGruppe = zaehleKategorien(countsEdit) + 1;
+
+                                if (anzahlAnDiesemTagOhneGruppe + neueAnzahlInDieserGruppe > MAX_GERICHTE_PRO_TAG) {
+                                    alert(`Maximal ${MAX_GERICHTE_PRO_TAG} Gerichte pro Tag erlaubt.`);
+                                    return;
+                                }
+
                                 countsEdit[label] = (countsEdit[label] || 0) + 1;
                                 renderPreise();
                             });
@@ -472,7 +500,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                                     bestell_datum: gruppe.bestellIsoDate || toIsoDateFromBestellDatum(gruppe.date),
                                     kategorie: label,
                                     preis: pricesByLabel[label],
-                                    image_url: gruppe.image || ""
+                                    image_url: gruppe.image || "",
+                                    status: "bestellt"
                                 });
                             }
                         });
@@ -480,6 +509,13 @@ document.addEventListener("DOMContentLoaded", async function () {
                         const idsToReplace = gruppe.ids || [];
                         if (idsToReplace.length === 0) {
                             alert("Diese Bestellung konnte nicht eindeutig zugeordnet werden.");
+                            return;
+                        }
+
+                        const isoDate = gruppe.bestellIsoDate || toIsoDateFromBestellDatum(gruppe.date);
+                        const anzahlAnDiesemTagOhneGruppe = zaehleBestellungenAnTagOhneIds(isoDate, idsToReplace);
+                        if (anzahlAnDiesemTagOhneGruppe + neueEintraege.length > MAX_GERICHTE_PRO_TAG) {
+                            alert(`Maximal ${MAX_GERICHTE_PRO_TAG} Gerichte pro Tag erlaubt.`);
                             return;
                         }
 

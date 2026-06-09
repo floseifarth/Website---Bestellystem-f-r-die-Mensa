@@ -525,7 +525,8 @@ async function ladeHeutigeBestellungen() {
 
     const { data, error } = await supabase
         .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum")
+        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
+        .eq("status", "bestellt")
         .or(`bestell_datum.eq.${todayIso},bestell_datum.eq.${todayGerman}`);
 
     if (error) {
@@ -677,12 +678,14 @@ async function ladeBestellungZumScan(scanRef) {
 
     let isoQuery = supabase
         .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum")
+        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
+        .eq("status", "bestellt")
         .eq("bestell_datum", todayIso);
 
     let germanQuery = supabase
         .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum")
+        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
+        .eq("status", "bestellt")
         .eq("bestell_datum", todayGerman);
 
     if (scanRef.type === "user_id") {
@@ -787,8 +790,9 @@ async function markiereAlsAbgeholt() {
 
     const { error } = await supabase
         .from("Bestellungen")
-        .delete()
-        .in("id", idsToDelete);
+        .update({ status: "abgeholt" })
+        .in("id", idsToDelete)
+        .eq("status", "bestellt");
 
     if (error) {
         throw new Error(error.message || "Abholung konnte nicht verbucht werden.");
