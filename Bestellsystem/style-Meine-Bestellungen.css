@@ -7,6 +7,7 @@ body {
     background-color: #f5f7fb;
     color: #222;
     padding-bottom: 60px;
+    scroll-behavior: smooth;
 }
 
 /* HEADER */
@@ -115,18 +116,51 @@ body {
     max-width: 1400px;
 }
 
+.bestell-sektion {
+    margin-bottom: 14px;
+}
+
+.bestell-sektion strong {
+    display: inline-block;
+    margin-bottom: 8px;
+    color: #0d2b52;
+}
+
+.bestell-schnellnav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+    flex-wrap: wrap;
+}
+
+.bestell-schnelllink {
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0d2b52;
+    background: #eaf5ff;
+    border: 1px solid #c9e2f7;
+    border-radius: 999px;
+    padding: 6px 10px;
+}
+
+.bestell-schnelllink:hover {
+    background: #dff0ff;
+}
+
 .speiseplan-eintrag {
     width: 600px;
     background: #ffffff;
     border-radius: 18px;
-    padding: 20px 24px;
-    margin-bottom: 20px;
-    margin-top: 20px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    margin-top: 8px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
     display: grid;
     grid-template-columns: 150px 1fr auto;
     align-items: center;
-    gap: 30px;
+    gap: 20px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -274,7 +308,7 @@ body {
 .bestellfensterfenster {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
 }
 
 .bestell-zeile {

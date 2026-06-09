@@ -1,5 +1,20 @@
 import { supabase } from "./supabaseClient.js";
 
+const ADMIN_LOCAL_SESSION_KEY = "admin-local-session-v1";
+const ADMIN_LOCAL_SESSION_MS = 12 * 60 * 60 * 1000;
+const AUTH_LOGIN_TIMEOUT_MS = 7000;
+
+function withTimeout(promise, timeoutMs, fallbackValue) {
+    return Promise.race([
+        promise,
+        new Promise(function (resolve) {
+            window.setTimeout(function () {
+                resolve(fallbackValue);
+            }, timeoutMs);
+        })
+    ]);
+}
+
 // Zeigt eine Rueckmeldung unter dem Login-Formular an.
 // `isError` steuert die Farbe der Nachricht (rot bei Fehler, gruen bei Erfolg/Info).
 function setMessage(text, isError) {
@@ -75,6 +90,50 @@ async function ladeAdminEmailByRzKennung(username) {
     return adminEmail || null;
 }
 
+function speichereAdminLokaleSession(adminRow, username) {
+    const payload = {
+        adminId: adminRow?.id || null,
+        rzKennung: String(adminRow?.["RZ-Kennung"] || username || "").trim(),
+        email: String(adminRow?.["E-Mail"] || "").trim().toLowerCase(),
+        expiresAt: Date.now() + ADMIN_LOCAL_SESSION_MS
+    };
+
+    sessionStorage.setItem(ADMIN_LOCAL_SESSION_KEY, JSON.stringify(payload));
+}
+
+async function loginAlsAdminDirekt(username, email, password) {
+    const rzKennung = String(username || "").trim();
+    const loginEmail = String(email || "").trim();
+
+    if (rzKennung) {
+        const { data: byRz, error: rzError } = await supabase
+            .from("AdminNutzer")
+            .select("id, RZ-Kennung, E-Mail")
+            .eq("RZ-Kennung", rzKennung)
+            .eq("Passwort", password)
+            .maybeSingle();
+
+        if (!rzError && byRz) {
+            return byRz;
+        }
+    }
+
+    if (loginEmail) {
+        const { data: byEmail, error: mailError } = await supabase
+            .from("AdminNutzer")
+            .select("id, RZ-Kennung, E-Mail")
+            .ilike("E-Mail", loginEmail)
+            .eq("Passwort", password)
+            .maybeSingle();
+
+        if (!mailError && byEmail) {
+            return byEmail;
+        }
+    }
+
+    return null;
+}
+
 
 // Fuehrt den eigentlichen Login-Prozess aus.
 async function login() {
@@ -101,14 +160,33 @@ async function login() {
 
         // Schritt 2: Erst Auth-Login pruefen.
         const defaultEmailForLogin = username + "@hs-esslingen.de";
-        const adminEmailForLogin = await ladeAdminEmailByRzKennung(username);
-        const emailForLogin = adminEmailForLogin || defaultEmailForLogin;
+        const emailForLogin = defaultEmailForLogin;
         setMessage("Anmeldedaten werden geprueft...", false);
 
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-            email: emailForLogin,
-            password
-        });
+        // Admin-Login ohne Supabase-Auth-Konto direkt ueber AdminNutzer zulassen.
+        const adminDirektVorAuth = await withTimeout(loginAlsAdminDirekt(username, emailForLogin, password), 1500, null);
+        if (adminDirektVorAuth) {
+            speichereAdminLokaleSession(adminDirektVorAuth, username);
+            setMessage("Admin-Login erfolgreich. Weiterleitung...", false);
+            window.location.href = "ADMIN-SEITE/ADMIN-Seite.html";
+            return;
+        }
+
+        const authResult = await withTimeout(
+            supabase.auth.signInWithPassword({
+                email: emailForLogin,
+                password
+            }),
+            AUTH_LOGIN_TIMEOUT_MS,
+            { timedOut: true, error: { message: "TIMEOUT" } }
+        );
+
+        if (authResult?.timedOut) {
+            setMessage("Login dauert zu lange. Bitte Verbindung prüfen und erneut versuchen.", true);
+            return;
+        }
+
+        const loginError = authResult?.error;
 
         if (loginError) {
             if (istUngueltigeLoginKombination(loginError.message)) {
@@ -125,11 +203,7 @@ async function login() {
                     return;
                 }
 
-                if (person || adminEmailForLogin) {
-                    if (adminEmailForLogin) {
-                        setMessage("Login fehlgeschlagen: Passwort falsch oder Admin-Auth-Konto fehlt.", true);
-                        return;
-                    }
+                if (person) {
                     setMessage("Falsches Passwort. Bitte erneut eingeben.", true);
                     return;
                 }
@@ -141,17 +215,32 @@ async function login() {
             return;
         }
 
-        const isAdmin = await istAdminNutzer(username, emailForLogin);
-        window.location.href = isAdmin ? "ADMIN-SEITE/ADMIN-Seite.html" : "startseite.html";
+        const isAdmin = await withTimeout(istAdminNutzer(username, emailForLogin), 1500, false);
+        if (isAdmin) {
+            const adminDirekt = await withTimeout(loginAlsAdminDirekt(username, emailForLogin, password), 1500, null);
+            if (adminDirekt) {
+                speichereAdminLokaleSession(adminDirekt, username);
+                window.location.href = "ADMIN-SEITE/ADMIN-Seite.html";
+                return;
+            }
+        }
+
+        // Fallback: erfolgreicher Auth-Login muss immer weiterleiten.
+        window.location.href = "startseite.html";
         return;
     } catch (error) {
+        const msg = String(error?.message || error || "").toLowerCase();
+        if (msg.includes("load failed") || msg.includes("network") || msg.includes("fetch")) {
+            setMessage("Netzwerkfehler beim Login. Bitte Internetverbindung prüfen und erneut versuchen.", true);
+            return;
+        }
+
         setMessage("Unerwarteter Fehler: " + (error?.message || String(error)), true);
     }
 }
 
-// Wartet, bis das HTML vollstaendig geladen ist,
-// und verbindet dann die Eingaben mit der Login-Funktion.
-document.addEventListener("DOMContentLoaded", function () {
+// Verbindet Eingaben mit der Login-Funktion.
+function initLoginSeite() {
     // Login-Button und Passwortfeld holen.
     const loginButton = document.getElementById("login-button");
     const registrierButton = document.getElementById("registrier-button");
@@ -202,4 +291,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initLoginSeite);
+} else {
+    initLoginSeite();
+}

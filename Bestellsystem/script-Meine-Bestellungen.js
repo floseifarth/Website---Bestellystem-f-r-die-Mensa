@@ -115,7 +115,6 @@ async function ladeBestellungenAusDb(user) {
         .from("Bestellungen")
         .select("id, bestell_datum, gericht_name, kategorie, preis, image_url, status")
         .eq("auth_user_id", user.id)
-        .eq("status", "bestellt")
         .order("created_at", { ascending: true });
 
     if (error) {
@@ -132,7 +131,8 @@ async function ladeBestellungenAusDb(user) {
             category: row.kategorie || "Studierende",
             price: row.preis || "-",
             image: row.image_url || "",
-            priceByCategory: {}
+            priceByCategory: {},
+            status: String(row.status || "bestellt").trim().toLowerCase()
         };
     });
 }
@@ -243,7 +243,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     // Bestellliste im HTML und gespeicherte Bestellungen aus der DB laden
-    const orderList = document.getElementById("order-list");
+    const orderList = document.getElementById("order-list-open") || document.getElementById("order-list");
+    const orderListPicked = document.getElementById("order-list-picked");
+    const orderListMissed = document.getElementById("order-list-missed");
     let bestellungen = [];
 
     function zaehleBestellungenAnTagOhneIds(isoDate, idsZumAusschliessen) {
@@ -253,7 +255,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         const ausschluss = new Set(idsZumAusschliessen || []);
         return bestellungen.filter(function (item) {
-            return item.bestellIsoDate === isoDate && !ausschluss.has(item.id);
+            return item.status === "bestellt" && item.bestellIsoDate === isoDate && !ausschluss.has(item.id);
         }).length;
     }
 
@@ -261,6 +263,37 @@ document.addEventListener("DOMContentLoaded", async function () {
         return Object.values(countsObjekt || {}).reduce(function (summe, anzahl) {
             return summe + (anzahl || 0);
         }, 0);
+    }
+
+    function renderHistorieListe(container, items, leerText) {
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = "";
+        if (!items || items.length === 0) {
+            const emptyRow = document.createElement("div");
+            emptyRow.className = "bestell-zeile";
+            emptyRow.innerText = leerText;
+            container.appendChild(emptyRow);
+            return;
+        }
+
+        const sortierte = [...items].sort(function (a, b) {
+            const datumA = toIsoDateFromBestellDatum(a.date) || "9999-12-31";
+            const datumB = toIsoDateFromBestellDatum(b.date) || "9999-12-31";
+            if (datumA !== datumB) {
+                return datumA.localeCompare(datumB);
+            }
+            return (a.name || "").localeCompare(b.name || "", "de");
+        });
+
+        sortierte.forEach(function (item) {
+            const row = document.createElement("div");
+            row.className = "bestell-zeile";
+            row.textContent = `${item.date} | ${item.name} | ${item.category} | ${item.price}`;
+            container.appendChild(row);
+        });
     }
 
     try {
@@ -271,21 +304,29 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (!orderList) return;
 
+    const laufendeBestellungen = bestellungen.filter(function (item) {
+        return item.status === "bestellt";
+    });
+    const abgeholteBestellungen = bestellungen.filter(function (item) {
+        return item.status === "abgeholt";
+    });
+    const nichtAbgeholteBestellungen = bestellungen.filter(function (item) {
+        return item.status === "nicht abgeholt" || item.status === "nicht_abgeholt";
+    });
+
     // Liste leeren bevor neu befüllt wird
     orderList.innerHTML = "";
 
-    if (bestellungen.length === 0) {
+    if (laufendeBestellungen.length === 0) {
         // Platzhalter anzeigen wenn keine Bestellungen vorhanden
         const emptyRow = document.createElement("div");
         emptyRow.className = "bestell-zeile";
-        emptyRow.innerText = "Noch keine Vorbestellung.";
+        emptyRow.innerText = "Noch keine laufende Bestellung.";
         orderList.appendChild(emptyRow);
     } else {
-        let total = 0;
-
         // Bestellungen nach Datum + Gericht gruppieren
         const gruppen = {};
-        bestellungen.forEach(function (item) {
+        laufendeBestellungen.forEach(function (item) {
             const key = `${item.date}||${item.name}`;
             if (!gruppen[key]) {
                 gruppen[key] = { ...item, kategorien: [], ids: [], priceByCategory: {} };
@@ -553,10 +594,9 @@ document.addEventListener("DOMContentLoaded", async function () {
             });
 
             orderList.appendChild(row);
-            total += gruppenTotal;
         });
-
-
-
     }
+
+    renderHistorieListe(orderListPicked, abgeholteBestellungen, "Noch keine abgeholte Bestellung.");
+    renderHistorieListe(orderListMissed, nichtAbgeholteBestellungen, "Noch keine nicht abgeholte Bestellung.");
 });
