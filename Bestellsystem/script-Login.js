@@ -14,6 +14,11 @@ function setMessage(text, isError) {
     messageElement.style.color = isError ? "#b42318" : "#027a48";
 }
 
+function istUngueltigeLoginKombination(errorMessage) {
+    const msg = (errorMessage || "").toLowerCase();
+    return msg.includes("invalid login credentials") || msg.includes("invalid credentials");
+}
+
 
 // Fuehrt den eigentlichen Login-Prozess aus.
 async function login() {
@@ -29,7 +34,7 @@ async function login() {
         }
 
         // Benutzerwerte einlesen (Leerzeichen am Rand entfernen).
-        const username = usernameElement.value.trim();
+        const username = usernameElement.value.trim().toLowerCase();
         const password = passwordElement.value;
 
         // Schritt 1: Pflichtfeld-Pruefung – beide Felder muessen ausgefuellt sein.
@@ -38,43 +43,38 @@ async function login() {
             return;
         }
 
-        // Schritt 2: Pruefen, ob die Person in "students" registriert ist.
-        setMessage("Registrierungsstatus wird geprueft...", false);
-
+        // Schritt 2: Erst Auth-Login pruefen.
         const emailForLogin = username + "@hs-esslingen.de";
-
-        const { data: person, error: personError } = await supabase
-            .from("students")
-            .select("email")
-            .ilike("email", emailForLogin)
-            .maybeSingle();
-
-        if (personError) {
-            setMessage("Fehler bei der Datenbankabfrage: " + personError.message, true);
-            return;
-        }
-
-        // Noch nicht registriert: zur SignUp-Seite weiterleiten.
-        if (!person) {
-            window.location.href = "SignUp.html?username=" + encodeURIComponent(username);
-            return;
-        }
-
-        // Registriert: E-Mail bestimmen und Passwort ueber Supabase Auth pruefen.
-        const loginEmail = person.email || emailForLogin;
-        if (!loginEmail) {
-            setMessage("Für diesen Benutzer ist keine E-Mail hinterlegt.", true);
-            return;
-        }
-
         setMessage("Anmeldedaten werden geprueft...", false);
 
         const { error: loginError } = await supabase.auth.signInWithPassword({
-            email: loginEmail,
+            email: emailForLogin,
             password
         });
 
         if (loginError) {
+            if (istUngueltigeLoginKombination(loginError.message)) {
+                // Bei ungueltigen Credentials zwischen
+                // "falsches Passwort" und "nicht registriert" unterscheiden.
+                const { data: person, error: personError } = await supabase
+                    .from("students")
+                    .select("email")
+                    .ilike("email", emailForLogin)
+                    .maybeSingle();
+
+                if (personError) {
+                    setMessage("Fehler bei der Datenbankabfrage: " + personError.message, true);
+                    return;
+                }
+
+                if (person) {
+                    setMessage("Falsches Passwort. Bitte erneut eingeben.", true);
+                    return;
+                }
+
+                window.location.href = "SignUp.html?username=" + encodeURIComponent(username);
+                return;
+            }
             setMessage("Login fehlgeschlagen: " + loginError.message, true);
             return;
         }
