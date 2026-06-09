@@ -193,6 +193,12 @@ function getTodayIso() {
     return toIsoDate(today);
 }
 
+function getTodayIsoVarianten() {
+    const lokal = getTodayIso();
+    const utc = new Date().toISOString().slice(0, 10);
+    return Array.from(new Set([lokal, utc]));
+}
+
 function loadFreeMealState() {
     const todayIso = getTodayIso();
     try {
@@ -264,21 +270,43 @@ function toIsoFromUnknownDate(value) {
 }
 
 async function ladeFreieEssenAusDb() {
-    const todayIso = getTodayIso();
+    const todayIsos = getTodayIsoVarianten();
+    const todayIso = todayIsos[0];
 
     const { data, error } = await supabase
         .from("FreieEssen")
-        .select("anzahl, datum, erstell_am")
-        .order("erstell_am", { ascending: false })
-        .limit(1000);
+        .select("anzahl, datum")
+        .in("datum", todayIsos);
 
     if (error) {
-        throw new Error(error.message || "FreieEssen konnte nicht geladen werden.");
+        // Fallback: ohne Datumsfilter laden und lokal normalisieren.
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from("FreieEssen")
+            .select("anzahl, datum")
+            .limit(2000);
+
+        if (fallbackError) {
+            throw new Error(fallbackError.message || "FreieEssen konnte nicht geladen werden.");
+        }
+
+        const fallbackTotal = (fallbackData || []).reduce(function (acc, row) {
+            const rowIso = toIsoFromUnknownDate(row.datum);
+            if (!rowIso || !todayIsos.includes(rowIso)) {
+                return acc;
+            }
+            return acc + signedNumberFromAny(row.anzahl);
+        }, 0);
+
+        return {
+            Studierende: 0,
+            Bedienstete: 0,
+            Gaeste: fallbackTotal
+        };
     }
 
     const total = (data || []).reduce(function (acc, row) {
-        const rowIso = toIsoFromUnknownDate(row.datum) || toIsoFromUnknownDate(row.erstell_am);
-        if (rowIso !== todayIso) {
+        const rowIso = toIsoFromUnknownDate(row.datum);
+        if (!rowIso || !todayIsos.includes(rowIso)) {
             return acc;
         }
         return acc + signedNumberFromAny(row.anzahl);
@@ -307,24 +335,73 @@ async function ermittleHeutigeSpeiseplanId() {
 }
 
 async function speichereFreieEssenInDb(delta) {
-    const todayIso = getTodayIso();
+    const todayIsos = getTodayIsoVarianten();
     const total = numberFromAny(delta.Studierende) + numberFromAny(delta.Bedienstete) + numberFromAny(delta.Gaeste);
     if (total <= 0) {
         return;
     }
 
-    const speiseplanId = await ermittleHeutigeSpeiseplanId();
-    const payload = {
-        datum: todayIso,
-        anzahl: -total
-    };
-    if (speiseplanId !== null) {
-        payload.speiseplan_id = speiseplanId;
+    const { data: todayRows, error: loadError } = await supabase
+        .from("FreieEssen")
+        .select("id, anzahl, datum")
+        .in("datum", todayIsos);
+
+    if (loadError) {
+        throw new Error(loadError.message || "FreieEssen konnte nicht geladen werden.");
     }
 
-    const { error } = await supabase.from("FreieEssen").insert([payload]);
-    if (error) {
-        throw new Error(error.message || "FreieEssen konnte nicht gespeichert werden.");
+    const rows = (todayRows || [])
+        .map(function (row) {
+            return {
+                id: row.id,
+                anzahl: Math.max(0, signedNumberFromAny(row.anzahl)),
+                isoDate: toIsoFromUnknownDate(row.datum)
+            };
+        })
+        .filter(function (row) {
+            return Boolean(row.isoDate) && todayIsos.includes(row.isoDate);
+        })
+        .sort(function (a, b) {
+            return b.anzahl - a.anzahl;
+        });
+
+    const verfuegbar = rows.reduce(function (summe, row) {
+        return summe + row.anzahl;
+    }, 0);
+
+    if (verfuegbar < total) {
+        throw new Error(`Nur ${verfuegbar} freie Essen verfuegbar.`);
+    }
+
+    let remaining = total;
+    for (const row of rows) {
+        if (remaining <= 0) {
+            break;
+        }
+        if (row.anzahl <= 0) {
+            continue;
+        }
+
+        const abzug = Math.min(row.anzahl, remaining);
+        const neueAnzahl = row.anzahl - abzug;
+        const { error: updateError } = await supabase
+            .from("FreieEssen")
+            .update({ anzahl: neueAnzahl })
+            .eq("id", row.id);
+
+        if (updateError) {
+            const msg = String(updateError.message || "").toLowerCase();
+            if (msg.includes("row-level security") || msg.includes("permission")) {
+                throw new Error("UPDATE-Policy fuer authenticated auf FreieEssen fehlt.");
+            }
+            throw new Error(updateError.message || "FreieEssen konnte nicht aktualisiert werden.");
+        }
+
+        remaining -= abzug;
+    }
+
+    if (remaining > 0) {
+        throw new Error("FreieEssen konnte nicht vollständig verbucht werden.");
     }
 }
 
@@ -915,10 +992,9 @@ if (zoneCFreeSaveBtn) {
         try {
             await speichereFreieEssenInDb(delta);
         } catch (error) {
-            const state = loadFreeMealState();
-            state.Gaeste = Math.max(0, (state.Gaeste || 0) - gesamt);
-            saveFreeMealState(state);
-            console.warn("FreieEssen nur lokal gespeichert:", error.message || error);
+            console.error(error);
+            setFreeFeedbackState("Fehler beim Speichern: " + (error.message || "Unbekannt"), "free-feedback-error");
+            return;
         }
 
         zoneCFreeSaveBtn.disabled = true;
