@@ -1,8 +1,21 @@
-import { supabase } from "./supabaseClient.js";
-
 const ADMIN_LOCAL_SESSION_KEY = "admin-local-session-v1";
 const ADMIN_LOCAL_SESSION_MS = 12 * 60 * 60 * 1000;
 const AUTH_LOGIN_TIMEOUT_MS = 7000;
+
+let supabasePromise = null;
+
+async function getSupabaseClient() {
+    if (!supabasePromise) {
+        supabasePromise = import("./supabaseClient.js")
+            .then(function (mod) {
+                if (!mod || !mod.supabase) {
+                    throw new Error("Supabase-Client konnte nicht geladen werden.");
+                }
+                return mod.supabase;
+            });
+    }
+    return supabasePromise;
+}
 
 function withTimeout(promise, timeoutMs, fallbackValue) {
     return Promise.race([
@@ -35,6 +48,7 @@ function istUngueltigeLoginKombination(errorMessage) {
 }
 
 async function istAdminNutzer(username, email) {
+    const supabase = await getSupabaseClient();
     const rzKennung = String(username || "").trim();
     const loginEmail = String(email || "").trim();
 
@@ -70,6 +84,7 @@ async function istAdminNutzer(username, email) {
 }
 
 async function ladeAdminEmailByRzKennung(username) {
+    const supabase = await getSupabaseClient();
     const rzKennung = String(username || "").trim();
     if (!rzKennung) {
         return null;
@@ -102,6 +117,7 @@ function speichereAdminLokaleSession(adminRow, username) {
 }
 
 async function loginAlsAdminDirekt(username, email, password) {
+    const supabase = await getSupabaseClient();
     const rzKennung = String(username || "").trim();
     const loginEmail = String(email || "").trim();
 
@@ -159,6 +175,12 @@ async function login() {
         }
 
         // Schritt 2: Erst Auth-Login pruefen.
+        const supabase = await withTimeout(getSupabaseClient(), 4000, null);
+        if (!supabase) {
+            setMessage("Backend aktuell nicht erreichbar. Bitte in einigen Sekunden erneut versuchen.", true);
+            return;
+        }
+
         const defaultEmailForLogin = username + "@hs-esslingen.de";
         const emailForLogin = defaultEmailForLogin;
         setMessage("Anmeldedaten werden geprueft...", false);
