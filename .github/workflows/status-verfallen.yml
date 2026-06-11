@@ -1,4 +1,4 @@
-name: Status verfallen setzen
+name: Status nicht abgeholt setzen
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Nicht abgeholte Bestellungen auf verfallen setzen
+      - name: Bestellungen nach Abholzeit auf nicht abgeholt setzen
         run: |
           node <<'NODE'
           const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -23,7 +23,7 @@ jobs:
           const heuteDatum = `${yyyy}-${mm}-${dd}`;
 
           async function main() {
-            const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${heuteDatum}&status=in.(bestellt,nicht%20abgeholt)`;
+            const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${heuteDatum}&status=eq.bestellt`;
 
             const response = await fetch(url, {
               method: "PATCH",
@@ -34,7 +34,7 @@ jobs:
                 Prefer: "return=representation"
               },
               body: JSON.stringify({
-                status: "verfallen"
+                status: "nicht abgeholt"
               }),
             });
 
@@ -43,7 +43,7 @@ jobs:
             }
 
             const updatedRows = await response.json();
-            console.log(`Bestellungen vom ${heuteDatum} auf verfallen gesetzt:`, updatedRows.length);
+            console.log(`Bestellungen vom ${heuteDatum} auf "nicht abgeholt" gesetzt:`, updatedRows.length);
           }
 
           main().catch((error) => {
