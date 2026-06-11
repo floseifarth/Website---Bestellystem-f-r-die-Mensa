@@ -1,0 +1,56 @@
+name: Status verfallen setzen
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 11 * * *"
+
+jobs:
+  status_update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Nicht abgeholte Bestellungen auf verfallen setzen
+        run: |
+          node <<'NODE'
+          const SUPABASE_URL = process.env.SUPABASE_URL;
+          const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+          const heute = new Date();
+          const yyyy = heute.getFullYear();
+          const mm = String(heute.getMonth() + 1).padStart(2, "0");
+          const dd = String(heute.getDate()).padStart(2, "0");
+          const heuteDatum = `${yyyy}-${mm}-${dd}`;
+
+          async function main() {
+            const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${heuteDatum}&status=in.(bestellt,nicht%20abgeholt)`;
+
+            const response = await fetch(url, {
+              method: "PATCH",
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                "Content-Type": "application/json",
+                Prefer: "return=representation"
+              },
+              body: JSON.stringify({
+                status: "verfallen"
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Supabase Fehler: " + await response.text());
+            }
+
+            const updatedRows = await response.json();
+            console.log(`Bestellungen vom ${heuteDatum} auf verfallen gesetzt:`, updatedRows.length);
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
