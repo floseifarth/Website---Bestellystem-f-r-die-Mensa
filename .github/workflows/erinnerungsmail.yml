@@ -31,8 +31,7 @@ jobs:
           const morgen = `${yyyy}-${mm}-${dd}`;
 
           async function main() {
-            const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${morgen}&abgeholt=eq.false&select=id,email,gericht_name,bestell_datum,preis,kategorie`;
-
+            const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${morgen}&select=id,email,gericht_name,bestell_datum,preis,kategorie`;
             const response = await fetch(url, {
               headers: {
                 apikey: SUPABASE_ANON_KEY,
