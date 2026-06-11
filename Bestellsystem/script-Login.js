@@ -47,15 +47,15 @@ async function login() {
         const emailForLogin = username + "@hs-esslingen.de";
         setMessage("Anmeldedaten werden geprueft...", false);
 
-        const { error: loginError } = await supabase.auth.signInWithPassword({
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
             email: emailForLogin,
             password
         });
 
         if (loginError) {
             if (istUngueltigeLoginKombination(loginError.message)) {
-                // Bei ungueltigen Credentials zwischen
-                // "falsches Passwort" und "nicht registriert" unterscheiden.
+                // Bei ungueltigen Credentials zwischen "falsches Passwort" und
+                // "Nutzer nicht registriert" unterscheiden.
                 const { data: person, error: personError } = await supabase
                     .from("students")
                     .select("email")
@@ -77,6 +77,22 @@ async function login() {
             }
             setMessage("Login fehlgeschlagen: " + loginError.message, true);
             return;
+        }
+
+        // Optionaler Selbstheilungs-Schritt: fehlenden students-Eintrag bei
+        // erfolgreichem Login unauffaellig nachziehen.
+        const authUserId = loginData?.user?.id;
+        const authEmail = (loginData?.user?.email || emailForLogin).toLowerCase();
+        const { data: existingStudent, error: existingStudentError } = await supabase
+            .from("students")
+            .select("email")
+            .ilike("email", authEmail)
+            .maybeSingle();
+
+        if (!existingStudentError && !existingStudent && authUserId) {
+            await supabase
+                .from("students")
+                .insert([{ username, email: authEmail, user_id: authUserId }]);
         }
 
         window.location.href = "startseite.html";
