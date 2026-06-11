@@ -23,7 +23,7 @@ jobs:
           const heuteDatum = `${yyyy}-${mm}-${dd}`;
 
           async function main() {
-            const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${heuteDatum}&status=eq.bestellt`;
+           const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${heuteDatum}&or=(status.eq.bestellt,status.is.null)`;
 
             const response = await fetch(url, {
               method: "PATCH",
