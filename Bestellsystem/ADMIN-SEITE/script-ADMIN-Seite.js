@@ -50,26 +50,6 @@ const vorschauListe = document.getElementById("vorschau-liste");
 
 let aktiveScanBestellung = null;
 
-function hatGueltigeLokaleAdminSession() {
-    try {
-        const raw = sessionStorage.getItem(ADMIN_LOCAL_SESSION_KEY);
-        if (!raw) {
-            return false;
-        }
-
-        const parsed = JSON.parse(raw);
-        if (!parsed || !parsed.expiresAt || Number(parsed.expiresAt) < Date.now()) {
-            sessionStorage.removeItem(ADMIN_LOCAL_SESSION_KEY);
-            return false;
-        }
-
-        return true;
-    } catch (_error) {
-        sessionStorage.removeItem(ADMIN_LOCAL_SESSION_KEY);
-        return false;
-    }
-}
-
 async function hatGueltigeAuthAdminSession() {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
@@ -105,10 +85,8 @@ async function hatGueltigeAuthAdminSession() {
 }
 
 async function pruefeAdminZugriff() {
-    if (hatGueltigeLokaleAdminSession()) {
-        return true;
-    }
-
+    // Lokale Browserdaten sind manipulierbar und duerfen keine Adminrechte vergeben.
+    sessionStorage.removeItem(ADMIN_LOCAL_SESSION_KEY);
     return hatGueltigeAuthAdminSession();
 }
 
