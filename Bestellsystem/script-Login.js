@@ -1,21 +1,6 @@
-const ADMIN_LOCAL_SESSION_KEY = "admin-local-session-v1";
-const ADMIN_LOCAL_SESSION_MS = 12 * 60 * 60 * 1000;
-const AUTH_LOGIN_TIMEOUT_MS = 7000;
+import { supabase } from "./supabaseClient.js";
 
-let supabasePromise = null;
-
-async function getSupabaseClient() {
-    if (!supabasePromise) {
-        supabasePromise = import("./supabaseClient.js")
-            .then(function (mod) {
-                if (!mod || !mod.supabase) {
-                    throw new Error("Supabase-Client konnte nicht geladen werden.");
-                }
-                return mod.supabase;
-            });
-    }
-    return supabasePromise;
-}
+const AUTH_LOGIN_TIMEOUT_MS = 2500;
 
 function withTimeout(promise, timeoutMs, fallbackValue) {
     return Promise.race([
@@ -47,107 +32,58 @@ function istUngueltigeLoginKombination(errorMessage) {
     return msg.includes("invalid login credentials") || msg.includes("invalid credentials");
 }
 
+function normalizeText(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function baueLoginEmailAusEingabe(rawInput) {
+    const cleaned = normalizeText(rawInput);
+    if (!cleaned) {
+        return "";
+    }
+    // Erlaubt sowohl RZ-Kennung als auch bereits vollstaendige E-Mail.
+    if (cleaned.includes("@")) {
+        return cleaned;
+    }
+    return cleaned + "@hs-esslingen.de";
+}
+
 async function istAdminNutzer(username, email) {
-    const supabase = await getSupabaseClient();
-    const rzKennung = String(username || "").trim();
-    const loginEmail = String(email || "").trim();
+    const rzKennung = normalizeText(username);
+    const loginEmail = normalizeText(email);
 
     try {
-        if (rzKennung) {
-            const { data: byRz, error: rzError } = await supabase
-                .from("AdminNutzer")
-                .select("id")
-                .eq("RZ-Kennung", rzKennung)
-                .maybeSingle();
-
-            if (!rzError && byRz) {
-                return true;
-            }
-        }
-
-        if (loginEmail) {
-            const { data: byEmail, error: mailError } = await supabase
+        const byMailPromise = loginEmail
+            ? supabase
                 .from("AdminNutzer")
                 .select("id")
                 .ilike("E-Mail", loginEmail)
-                .maybeSingle();
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null });
 
-            if (!mailError && byEmail) {
-                return true;
-            }
+        const byRzPromise = rzKennung
+            ? supabase
+                .from("AdminNutzer")
+                .select("id")
+                .ilike("RZ-Kennung", rzKennung)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null });
+
+        const [byMailRes, byRzRes] = await Promise.all([byMailPromise, byRzPromise]);
+
+        if (byMailRes?.error) {
+            console.warn("Admin-Erkennung per E-Mail fehlgeschlagen:", byMailRes.error.message || byMailRes.error);
         }
+        if (byRzRes?.error) {
+            console.warn("Admin-Erkennung per RZ-Kennung fehlgeschlagen:", byRzRes.error.message || byRzRes.error);
+        }
+
+        return Boolean(byMailRes?.data || byRzRes?.data);
     } catch (error) {
         console.warn("Admin-Erkennung fehlgeschlagen:", error?.message || error);
     }
 
     return false;
-}
-
-async function ladeAdminEmailByRzKennung(username) {
-    const supabase = await getSupabaseClient();
-    const rzKennung = String(username || "").trim();
-    if (!rzKennung) {
-        return null;
-    }
-
-    const { data, error } = await supabase
-        .from("AdminNutzer")
-        .select("E-Mail")
-        .eq("RZ-Kennung", rzKennung)
-        .maybeSingle();
-
-    if (error) {
-        console.warn("Admin-E-Mail konnte nicht geladen werden:", error.message || error);
-        return null;
-    }
-
-    const adminEmail = String(data?.["E-Mail"] || "").trim().toLowerCase();
-    return adminEmail || null;
-}
-
-function speichereAdminLokaleSession(adminRow, username) {
-    const payload = {
-        adminId: adminRow?.id || null,
-        rzKennung: String(adminRow?.["RZ-Kennung"] || username || "").trim(),
-        email: String(adminRow?.["E-Mail"] || "").trim().toLowerCase(),
-        expiresAt: Date.now() + ADMIN_LOCAL_SESSION_MS
-    };
-
-    sessionStorage.setItem(ADMIN_LOCAL_SESSION_KEY, JSON.stringify(payload));
-}
-
-async function loginAlsAdminDirekt(username, email, password) {
-    const supabase = await getSupabaseClient();
-    const rzKennung = String(username || "").trim();
-    const loginEmail = String(email || "").trim();
-
-    if (rzKennung) {
-        const { data: byRz, error: rzError } = await supabase
-            .from("AdminNutzer")
-            .select("id, RZ-Kennung, E-Mail")
-            .eq("RZ-Kennung", rzKennung)
-            .eq("Passwort", password)
-            .maybeSingle();
-
-        if (!rzError && byRz) {
-            return byRz;
-        }
-    }
-
-    if (loginEmail) {
-        const { data: byEmail, error: mailError } = await supabase
-            .from("AdminNutzer")
-            .select("id, RZ-Kennung, E-Mail")
-            .ilike("E-Mail", loginEmail)
-            .eq("Passwort", password)
-            .maybeSingle();
-
-        if (!mailError && byEmail) {
-            return byEmail;
-        }
-    }
-
-    return null;
 }
 
 
@@ -165,7 +101,8 @@ async function login() {
         }
 
         // Benutzerwerte einlesen (Leerzeichen am Rand entfernen).
-        const username = usernameElement.value.trim().toLowerCase();
+        const usernameInput = usernameElement.value;
+        const username = normalizeText(usernameInput);
         const password = passwordElement.value;
 
         // Schritt 1: Pflichtfeld-Pruefung – beide Felder muessen ausgefuellt sein.
@@ -174,34 +111,33 @@ async function login() {
             return;
         }
 
+        // Zu kurze Passwoerter direkt abfangen, statt als "nicht registriert" zu behandeln.
+        if (password.length < 6) {
+            setMessage("Passwort muss mindestens 6 Zeichen haben.", true);
+            return;
+        }
+
+        if (navigator.onLine === false) {
+            setMessage("Keine Internetverbindung. Bitte Verbindung prüfen und erneut versuchen.", true);
+            return;
+        }
+
         // Schritt 2: Erst Auth-Login pruefen.
-        const supabase = await withTimeout(getSupabaseClient(), 4000, null);
-        if (!supabase) {
-            setMessage("Backend aktuell nicht erreichbar. Bitte in einigen Sekunden erneut versuchen.", true);
-            return;
+        const emailForLogin = baueLoginEmailAusEingabe(usernameInput);
+        setMessage("Anmeldedaten werden geprüft...", false);
+
+        async function loginVersuch(timeoutMs) {
+            return withTimeout(
+                supabase.auth.signInWithPassword({
+                    email: emailForLogin,
+                    password
+                }),
+                timeoutMs,
+                { timedOut: true, error: { message: "TIMEOUT" } }
+            );
         }
 
-        const defaultEmailForLogin = username + "@hs-esslingen.de";
-        const emailForLogin = defaultEmailForLogin;
-        setMessage("Anmeldedaten werden geprueft...", false);
-
-        // Admin-Login ohne Supabase-Auth-Konto direkt ueber AdminNutzer zulassen.
-        const adminDirektVorAuth = await withTimeout(loginAlsAdminDirekt(username, emailForLogin, password), 1500, null);
-        if (adminDirektVorAuth) {
-            speichereAdminLokaleSession(adminDirektVorAuth, username);
-            setMessage("Admin-Login erfolgreich. Weiterleitung...", false);
-            window.location.href = "ADMIN-SEITE/ADMIN-Seite.html";
-            return;
-        }
-
-        const authResult = await withTimeout(
-            supabase.auth.signInWithPassword({
-                email: emailForLogin,
-                password
-            }),
-            AUTH_LOGIN_TIMEOUT_MS,
-            { timedOut: true, error: { message: "TIMEOUT" } }
-        );
+        const authResult = await loginVersuch(AUTH_LOGIN_TIMEOUT_MS);
 
         if (authResult?.timedOut) {
             setMessage("Login dauert zu lange. Bitte Verbindung prüfen und erneut versuchen.", true);
@@ -212,39 +148,26 @@ async function login() {
 
         if (loginError) {
             if (istUngueltigeLoginKombination(loginError.message)) {
-                // Bei ungueltigen Credentials zwischen
-                // "falsches Passwort" und "nicht registriert" unterscheiden.
-                const { data: person, error: personError } = await supabase
-                    .from("students")
-                    .select("email")
-                    .ilike("email", defaultEmailForLogin)
-                    .maybeSingle();
-
-                if (personError) {
-                    setMessage("Fehler bei der Datenbankabfrage: " + personError.message, true);
-                    return;
-                }
-
-                if (person) {
-                    setMessage("Falsches Passwort. Bitte erneut eingeben.", true);
-                    return;
-                }
-
-                window.location.href = "SignUp.html?username=" + encodeURIComponent(username);
+                setMessage("Benutzername oder Passwort ist falsch.", true);
+                return;
+            }
+            const loginErrorMsg = String(loginError.message || "").toLowerCase();
+            if (loginErrorMsg.includes("load failed") || loginErrorMsg.includes("network") || loginErrorMsg.includes("fetch")) {
+                setMessage("Verbindung zum Login-Service fehlgeschlagen. Bitte kurz erneut versuchen.", true);
                 return;
             }
             setMessage("Login fehlgeschlagen: " + loginError.message, true);
             return;
         }
 
-        const isAdmin = await withTimeout(istAdminNutzer(username, emailForLogin), 1500, false);
-        if (isAdmin) {
-            const adminDirekt = await withTimeout(loginAlsAdminDirekt(username, emailForLogin, password), 1500, null);
-            if (adminDirekt) {
-                speichereAdminLokaleSession(adminDirekt, username);
-                window.location.href = "ADMIN-SEITE/ADMIN-Seite.html";
-                return;
-            }
+        const sessionUserEmail = String(authResult?.data?.session?.user?.email || "").trim();
+        const authUserEmail = String(authResult?.data?.user?.email || sessionUserEmail || emailForLogin).trim();
+
+        const rzKennungFuerAdminCheck = authUserEmail.includes("@") ? authUserEmail.split("@")[0] : username;
+        const isAdminNachAuth = await istAdminNutzer(rzKennungFuerAdminCheck, authUserEmail);
+        if (isAdminNachAuth) {
+            window.location.href = "ADMIN-SEITE/ADMIN-Seite.html";
+            return;
         }
 
         // Fallback: erfolgreicher Auth-Login muss immer weiterleiten.
