@@ -66,6 +66,21 @@ body {
     color: var(--accent-navy);
 }
 
+.admin-header-abmelden {
+    border: none;
+    border-radius: 10px;
+    padding: 8px 12px;
+    background: var(--accent-navy);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-header-abmelden:hover {
+    background: #113969;
+}
+
 /* LAYOUT */
 .admin-workspace {
     display: grid;

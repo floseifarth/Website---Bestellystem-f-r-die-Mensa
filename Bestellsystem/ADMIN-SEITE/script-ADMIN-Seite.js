@@ -2,6 +2,8 @@ import { supabase } from "../supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const STORAGE_FREE_KEY = "admin-freie-essen-v1";
+const ADMIN_LOCAL_SESSION_KEY = "admin-local-session-v1";
+const adminLogoutButton = document.getElementById("btn-admin-abmelden");
 
 const scanButton = document.getElementById("scan-qr-btn");
 const scanStatus = document.getElementById("scan-status");
@@ -47,6 +49,78 @@ const heutigesAllergene = document.getElementById("heutiges-allergene");
 const vorschauListe = document.getElementById("vorschau-liste");
 
 let aktiveScanBestellung = null;
+
+function hatGueltigeLokaleAdminSession() {
+    try {
+        const raw = sessionStorage.getItem(ADMIN_LOCAL_SESSION_KEY);
+        if (!raw) {
+            return false;
+        }
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || !parsed.expiresAt || Number(parsed.expiresAt) < Date.now()) {
+            sessionStorage.removeItem(ADMIN_LOCAL_SESSION_KEY);
+            return false;
+        }
+
+        return true;
+    } catch (_error) {
+        sessionStorage.removeItem(ADMIN_LOCAL_SESSION_KEY);
+        return false;
+    }
+}
+
+async function hatGueltigeAuthAdminSession() {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+        return false;
+    }
+
+    const user = sessionData?.session?.user;
+    if (!user) {
+        return false;
+    }
+
+    const email = String(user.email || "").trim();
+    const rzKennung = email.split("@")[0] || "";
+
+    const [byEmailRes, byRzRes] = await Promise.all([
+        email
+            ? supabase.from("AdminNutzer").select("id").ilike("E-Mail", email).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+        rzKennung
+            ? supabase.from("AdminNutzer").select("id").eq("RZ-Kennung", rzKennung).maybeSingle()
+            : Promise.resolve({ data: null, error: null })
+    ]);
+
+    if (!byEmailRes.error && byEmailRes.data) {
+        return true;
+    }
+
+    if (!byRzRes.error && byRzRes.data) {
+        return true;
+    }
+
+    return false;
+}
+
+async function pruefeAdminZugriff() {
+    if (hatGueltigeLokaleAdminSession()) {
+        return true;
+    }
+
+    return hatGueltigeAuthAdminSession();
+}
+
+async function adminAbmelden() {
+    sessionStorage.removeItem(ADMIN_LOCAL_SESSION_KEY);
+    try {
+        await supabase.auth.signOut();
+    } catch (_error) {
+        // Lokale Session reicht bereits fuer den sicheren Logout-Pfad.
+    }
+    window.location.href = "../Login.html";
+}
 
 function emptyFreieEssenState() {
     return {
@@ -525,7 +599,8 @@ async function ladeHeutigeBestellungen() {
 
     const { data, error } = await supabase
         .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum")
+        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
+        .eq("status", "bestellt")
         .or(`bestell_datum.eq.${todayIso},bestell_datum.eq.${todayGerman}`);
 
     if (error) {
@@ -677,12 +752,14 @@ async function ladeBestellungZumScan(scanRef) {
 
     let isoQuery = supabase
         .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum")
+        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
+        .eq("status", "bestellt")
         .eq("bestell_datum", todayIso);
 
     let germanQuery = supabase
         .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum")
+        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
+        .eq("status", "bestellt")
         .eq("bestell_datum", todayGerman);
 
     if (scanRef.type === "user_id") {
@@ -787,8 +864,9 @@ async function markiereAlsAbgeholt() {
 
     const { error } = await supabase
         .from("Bestellungen")
-        .delete()
-        .in("id", idsToDelete);
+        .update({ status: "abgeholt" })
+        .in("id", idsToDelete)
+        .eq("status", "bestellt");
 
     if (error) {
         throw new Error(error.message || "Abholung konnte nicht verbucht werden.");
@@ -1019,6 +1097,18 @@ if (zoneCFreeSaveBtn) {
     });
 }
 
-updateMainPickupButton();
-hideZoneCResult();
-ladeDashboard();
+(async function initAdminSeite() {
+    const erlaubt = await pruefeAdminZugriff();
+    if (!erlaubt) {
+        window.location.href = "../Login.html";
+        return;
+    }
+
+    if (adminLogoutButton) {
+        adminLogoutButton.addEventListener("click", adminAbmelden);
+    }
+
+    updateMainPickupButton();
+    hideZoneCResult();
+    ladeDashboard();
+})();
