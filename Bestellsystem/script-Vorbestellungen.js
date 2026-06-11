@@ -341,12 +341,18 @@ async function sendeBestellbestaetigung(user, orderItems) {
         "service_46zmvnc",
         "template_ugos18i",
         {
-    to_email: user.email,
-    name: user.user_metadata?.full_name || user.email,
-    gericht: orderSummary,
-    preis: formatPrice(totalPrice),
-    datum: orderItems[0]?.date || "-"
-}
+            to_email: user.email,
+            email: user.email,
+
+            name: user.user_metadata?.full_name || user.email,
+
+            from_name: "MensaGo No-Reply",
+            reply_to: "mensagohs-esslingen@outlook.de",
+
+            gericht: orderSummary,
+            preis: formatPrice(totalPrice),
+            datum: orderItems[0]?.date || "-"
+        }
     );
 }
     // Beim Abschicken: in der DB speichern und erst dann weiterleiten.
