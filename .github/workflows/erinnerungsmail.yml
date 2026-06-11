@@ -25,13 +25,16 @@ jobs:
 
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
+
           const yyyy = tomorrow.getFullYear();
           const mm = String(tomorrow.getMonth() + 1).padStart(2, "0");
           const dd = String(tomorrow.getDate()).padStart(2, "0");
+
           const morgen = `${yyyy}-${mm}-${dd}`;
 
           async function main() {
             const url = `${SUPABASE_URL}/rest/v1/Bestellungen?bestell_datum=eq.${morgen}&select=id,email,gericht_name,bestell_datum,preis,kategorie`;
+
             const response = await fetch(url, {
               headers: {
                 apikey: SUPABASE_ANON_KEY,
@@ -44,6 +47,7 @@ jobs:
             }
 
             const bestellungen = await response.json();
+
             console.log(`Gefundene Bestellungen für morgen (${morgen}):`, bestellungen.length);
 
             for (const bestellung of bestellungen) {
