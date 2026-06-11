@@ -20,6 +20,9 @@ jobs:
           const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
           const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
+          const FROM_NAME = "MensaGo No-Reply";
+          const REPLY_TO = "mensagohs-esslingen@outlook.de";
+
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const yyyy = tomorrow.getFullYear();
@@ -58,9 +61,13 @@ jobs:
                   user_id: EMAILJS_PUBLIC_KEY,
                   accessToken: EMAILJS_PRIVATE_KEY,
                   template_params: {
-                    to_email: bestellung.email,
                     email: bestellung.email,
+                    to_email: bestellung.email,
                     name: bestellung.email,
+
+                    from_name: FROM_NAME,
+                    reply_to: REPLY_TO,
+
                     gericht: bestellung.gericht_name,
                     preis: bestellung.preis,
                     datum: bestellung.bestell_datum,
