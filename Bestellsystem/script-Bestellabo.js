@@ -392,7 +392,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const nameEl = document.getElementById("user-display-name");
     if (nameEl) {
         const meta = (user.user_metadata?.full_name || "").trim();
-        nameEl.textContent = meta ? meta.split(/\s+/)[0] : currentEmail;
+        nameEl.textContent = meta ? meta.split(/\s+/)[0] : currentEmail.split("@")[0];
     }
 
     // Abo laden

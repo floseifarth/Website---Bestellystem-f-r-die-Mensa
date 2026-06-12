@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passwort zurücksetzen</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style-Passwort-zuruecksetzen.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-logo-links">
+            <img class="logo-studierendenwerk" src="img/studierendenwerk-stuttgart.png"
+                alt="Studierendenwerk Stuttgart Logo">
+        </div>
+
+        <div class="header-rechts">
+            <img class="logo" src="img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+            <div class="datum">
+                <span id="datum"></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="anmelde-container">
+
+
+        <img class="login-logo" src="img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+
+        <p class="info-text info-center">
+            Geben Sie den Einmalcode und Ihr neues Passwort ein.
+        </p>
+
+        <label class="feld-label" for="reset-username">RZ-Benutzername</label>
+        <input id="reset-username" type="text" class="login-input" placeholder="Benutzername">
+
+        <p class="email-hinweis">Der Einmalcode wurde an die Hochschul-E-Mail von <strong
+                id="reset-email-preview">-</strong> gesendet.</p>
+
+        <button id="btn-send-reset-code" class="anmelde-button" type="button">Einmalcode senden</button>
+
+        <label class="feld-label" for="reset-code">Einmalcode</label>
+        <input id="reset-code" type="text" class="login-input" inputmode="numeric" maxlength="8"
+            placeholder="Einmalcode eingeben">
+
+        <label class="feld-label" for="reset-new-password">Neues Passwort</label>
+        <input id="reset-new-password" type="password" class="login-input" placeholder="Neues Passwort eingeben">
+
+        <label class="feld-label" for="reset-new-password-repeat">Passwort wiederholen</label>
+        <input id="reset-new-password-repeat" type="password" class="login-input"
+            placeholder="Passwort erneut eingeben">
+
+        <button id="btn-reset-password" class="anmelde-button" type="button">Passwort ändern</button>
+        <p id="reset-message" class="reset-message"></p>
+
+        <a class="zurueck-link" href="Login.html">Zurück zum Login</a>
+    </main>
+
+    <footer class="fußzeile">
+        (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
+        <a href="Datenschutz.html">Datenschutz</a> |
+        <a href="Impressum.html">Impressum</a> |
+        <a href="Kontakt.html">Kontakt</a>
+    </footer>
+
+    <script>
+        let heute = new Date();
+        let tage = [
+            "Sonntag", "Montag", "Dienstag",
+            "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+        ];
+
+        let wochentag = tage[heute.getDay()];
+        let datum = heute.toLocaleDateString("de-DE");
+
+        document.getElementById("datum").innerText = wochentag + ", " + datum;
+    </script>
+    <script type="module" src="script-Passwort-zuruecksetzen.js"></script>
+</body>
+
+</html>

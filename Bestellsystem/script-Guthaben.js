@@ -21,7 +21,7 @@ async function ermittleVorname(user) {
         return data.Vorname;
     }
 
-    return email;
+    return email.split("@")[0];
 }
 
 // Seite ist bereit – Session und Name laden.

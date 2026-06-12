@@ -5,7 +5,6 @@ body {
     padding: 0 0 70px;
 }
 
-/* HEADER */
 .header {
     height: clamp(64px, 8vw, 96px);
     background: white;
@@ -42,7 +41,6 @@ body {
     display: block;
 }
 
-/* DATUM RECHTS */
 .datum {
     display: flex;
     align-items: center;
@@ -57,28 +55,43 @@ body {
     background-color: #ffffff;
     border-radius: 8px;
     width: min(92vw, 430px);
-    padding: 28px 34px 26px;
+    padding: 22px 34px 26px;
     margin: 24px auto 40px;
     box-shadow: 0 4px 8px rgba(4, 4, 4, 0.1);
+}
+
+.seiten-kennung {
+    width: 100%;
+    height: 54px;
+    border-radius: 10px;
+    border: 3px solid #0f1012;
+    background: #d9e7f8;
+    color: #111827;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 16px;
 }
 
 .login-logo {
     display: block;
     width: min(100%, 240px);
-    margin: 0 auto 18px;
+    margin: 0 auto 14px;
 }
 
-.login-titel {
-    margin: 0 0 22px;
-    color: #525252;
-    font-size: 24px;
+.info-text {
+    margin: 0 0 14px;
+    font-size: 16px;
+    line-height: 1.35;
+    color: #333;
+}
+
+.info-center {
     text-align: center;
-    font-weight: 600;
 }
 
 .feld-label {
     display: block;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     margin: 0 0 8px;
 }
@@ -88,45 +101,17 @@ body {
     box-sizing: border-box;
     height: 44px;
     padding: 10px;
-    margin: 0 0 16px;
+    margin: 0 0 14px;
     border: 1px solid #8d8c8c;
     border-radius: 4px;
 }
 
-.passwort-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    margin: 0 0 18px;
-}
-
-.passwort-input {
-    width: 100%;
-    box-sizing: border-box;
-    height: 44px;
-    padding: 10px 44px 10px 10px;
-    border: 1px solid #8d8c8c;
-    border-radius: 4px;
-    margin: 0;
-}
-
-.show-password-button {
-    position: absolute;
-    right: 0;
-    height: 44px;
-    width: 40px;
-    background: none;
-    border: 1px solid #8d8c8c;
-    border-radius: 0 4px 4px 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.eye-icon {
-    width: 20px;
-    height: 20px;
+.email-hinweis {
+    margin: 4px 0 12px;
+    text-align: center;
+    font-size: 15px;
+    color: #111827;
+    word-break: break-word;
 }
 
 .anmelde-button {
@@ -136,59 +121,27 @@ body {
     width: 100%;
     height: 44px;
     padding: 0;
-    margin: 0;
+    margin: 0 0 14px;
     border: 1px solid #4768b057;
     border-radius: 4px;
     cursor: pointer;
 }
 
-.passwort-vergessen-link {
+.reset-message {
+    font-size: 13px;
+    text-align: center;
+    min-height: 1.2em;
+    margin: 6px 0 8px;
+    color: #b42318;
+}
+
+.zurueck-link {
     display: block;
-    margin: 12px 0 4px;
     text-align: center;
     font-size: 15px;
     color: #0d2b52;
     font-weight: 600;
     text-decoration: underline;
-}
-
-.passwort-vergessen-link:hover {
-    color: #183b6c;
-}
-
-.login-message {
-    font-size: 13px;
-    text-align: center;
-    color: #b42318;
-    min-height: 1.2em;
-    margin: 10px 0 8px;
-}
-
-.sektion-linie {
-    height: 1px;
-    background: #dfdfdf;
-    margin: 14px 0 16px;
-}
-
-.registrierung-text {
-    margin: 0 0 10px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-}
-
-.registrier-button {
-    background-color: #d8e5f69a;
-    color: #14253c;
-    font-size: 14px;
-    width: 100%;
-    height: 44px;
-    padding: 0;
-    margin: 0;
-    border: 1px solid #0f1f34;
-    border-radius: 4px;
-    cursor: pointer;
 }
 
 @media (max-width: 640px) {
@@ -216,17 +169,16 @@ body {
 
     .anmelde-container {
         width: calc(100% - 34px);
-        padding: 24px 20px 22px;
+        padding: 20px 20px 22px;
         margin-top: 28px;
     }
 
-    .login-logo {
-        width: min(100%, 240px);
-        margin-bottom: 14px;
+    .seiten-kennung {
+        height: 50px;
+        font-size: 20px;
     }
 }
 
-/* FOOTER */
 .fußzeile {
     position: fixed;
     bottom: 0;

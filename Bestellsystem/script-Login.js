@@ -188,6 +188,7 @@ async function login() {
 function initLoginSeite() {
     // Login-Button und Passwortfeld holen.
     const loginButton = document.getElementById("login-button");
+    const forgotPasswordLink = document.getElementById("login-forgot-password");
     const registrierButton = document.getElementById("registrier-button");
     const usernameInput = document.getElementById("login-username");
     const passwordInput = document.getElementById("login-password");
@@ -208,6 +209,18 @@ function initLoginSeite() {
                 return;
             }
             window.location.href = "SignUp.html";
+        });
+    }
+
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener("click", function (event) {
+            const enteredUsername = usernameInput?.value?.trim() || "";
+            if (!enteredUsername) {
+                return;
+            }
+
+            event.preventDefault();
+            window.location.href = "Passwort-zuruecksetzen.html?username=" + encodeURIComponent(enteredUsername);
         });
     }
 
