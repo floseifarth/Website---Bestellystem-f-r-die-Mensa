@@ -1,0 +1,398 @@
+import { supabase } from "./supabaseClient.js";
+
+// ─── Konstanten ──────────────────────────────────────────────────────────────
+
+const WOCHENTAGE_KURZ = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+// ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
+
+function pad(n) {
+    return String(n).padStart(2, "0");
+}
+
+function isoToDate(iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function todayIso() {
+    return new Date().toISOString().split("T")[0];
+}
+
+/** Montag bis Freitag der übernächsten Woche */
+function getUebernachsteWoche() {
+    const today = new Date();
+    const dow = today.getDay();
+    const daysToMonday = dow === 0 ? 1 : 8 - dow;
+    const nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysToMonday + 7);
+    return Array.from({ length: 5 }, (_, i) => {
+        const d = new Date(nextMonday);
+        d.setDate(nextMonday.getDate() + i);
+        return d.toISOString().split("T")[0];
+    });
+}
+
+function preisToNumber(preis) {
+    return parseFloat(String(preis || "0").replace("€", "").replace(",", ".").trim()) || 0;
+}
+
+/**
+ * Gibt true zurück wenn das Gericht die Abo-Kriterien erfüllt
+ */
+function matchesAbo(abo, meal) {
+    if (abo.ausgeschlossene_allergene.length > 0 && meal.Allergene) {
+        const mealAllergene = meal.Allergene.split(",").map(a => a.trim().toLowerCase());
+        for (const a of abo.ausgeschlossene_allergene) {
+            if (mealAllergene.includes(a.toLowerCase())) return false;
+        }
+    }
+    if (abo.vegan && meal.ernaehrungstyp !== "vegan") return false;
+    if (abo.vegetarisch && meal.ernaehrungstyp === "nicht vegetarisch") return false;
+    return true;
+}
+
+// ─── Zustand ─────────────────────────────────────────────────────────────────
+
+let abo = {
+    aktiv: false,
+    wochentage: [],
+    ausgeschlossene_allergene: [],
+    vegetarisch: false,
+    vegan: false,
+    nutzertyp: "Studierende",
+};
+
+let currentEmail = null;
+let currentAuthUserId = null;
+let isSaving = false;
+let isTogglingAktiv = false;
+
+// ─── Upsert-Logik ────────────────────────────────────────────────────────────
+
+async function doUpsert(aboData) {
+    // Versuch 1: RPC
+    const { error: rpcErr } = await supabase.rpc("upsert_bestellabo", {
+        p_email: currentEmail,
+        p_auth_user_id: currentAuthUserId,
+        p_aktiv: aboData.aktiv,
+        p_wochentage: aboData.wochentage,
+        p_ausgeschlossene_allergene: aboData.ausgeschlossene_allergene,
+        p_vegetarisch: aboData.vegetarisch,
+        p_vegan: aboData.vegan,
+        p_nutzertyp: aboData.nutzertyp,
+    });
+    if (!rpcErr) return null;
+
+    // Versuch 2: direktes Upsert
+    const { error: upsertErr } = await supabase
+        .from("bestellabos")
+        .upsert({
+            email: currentEmail,
+            auth_user_id: currentAuthUserId,
+            aktiv: aboData.aktiv,
+            wochentage: aboData.wochentage,
+            ausgeschlossene_allergene: aboData.ausgeschlossene_allergene,
+            vegetarisch: aboData.vegetarisch,
+            vegan: aboData.vegan,
+            nutzertyp: aboData.nutzertyp,
+        }, { onConflict: "email" });
+
+    return upsertErr ? `RPC: ${rpcErr.message} | Direkt: ${upsertErr.message}` : null;
+}
+
+// ─── Auto-Apply ──────────────────────────────────────────────────────────────
+
+async function autoApplyAbo(aboData, forEmail) {
+    if (!aboData.aktiv || aboData.wochentage.length === 0) return;
+
+    const wochentage = getUebernachsteWoche();
+    if (wochentage.length === 0) return;
+
+    const { data: speiseplan } = await supabase
+        .from("Speiseplan")
+        .select("*")
+        .in("Ausgabedatum", wochentage);
+
+    const rows = [];
+    for (const meal of (speiseplan || [])) {
+        const dow = isoToDate(meal.Ausgabedatum).getDay();
+        if (!aboData.wochentage.includes(dow)) continue;
+        if (!matchesAbo(aboData, meal)) continue;
+
+        // Bereits bestellt?
+        const { data: existing } = await supabase
+            .from("Bestellungen")
+            .select("id")
+            .eq("email", forEmail)
+            .eq("bestell_datum", meal.Ausgabedatum)
+            .limit(1);
+        if (existing && existing.length > 0) continue;
+
+        const kategorie = aboData.nutzertyp === "Externe" ? "Gäste" : aboData.nutzertyp;
+        const preis = aboData.nutzertyp === "Studierende"
+            ? meal.PreisStudierende
+            : aboData.nutzertyp === "Bedienstete"
+                ? meal.PreisBedienstet
+                : meal.PreisGast;
+
+        rows.push({
+            email: forEmail,
+            gericht_name: meal.Gerichtname,
+            bestell_datum: meal.Ausgabedatum,
+            kategorie,
+            preis,
+            image_url: meal.image_url,
+            auth_user_id: currentAuthUserId,
+            status: "bestellt",
+        });
+    }
+
+    if (rows.length > 0) {
+        const { error } = await supabase.from("Bestellungen").insert(rows);
+        if (!error) {
+            const tage = [...new Set(rows.map(r =>
+                WOCHENTAGE_KURZ[isoToDate(r.bestell_datum).getDay()] || "?"
+            ))].join(" · ");
+            zeigeAutoOrderBadge(`Automatisch bestellt für übernächste Woche: ${tage} (${rows.length} Bestellung${rows.length !== 1 ? "en" : ""})`);
+        }
+    }
+}
+
+// ─── UI-Hilfsfunktionen ──────────────────────────────────────────────────────
+
+function zeigeAutoOrderBadge(text) {
+    const badge = document.getElementById("auto-order-badge");
+    const textEl = document.getElementById("auto-order-text");
+    if (!badge || !textEl) return;
+    textEl.textContent = text;
+    badge.hidden = false;
+}
+
+function zeigeNachricht(text, isError) {
+    const el = document.getElementById("abo-message");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "abo-message-box " + (isError ? "abo-message-error" : "abo-message-success");
+    el.hidden = false;
+    if (!isError) {
+        setTimeout(() => { el.hidden = true; }, 4000);
+    }
+}
+
+function aktualisiereStatusChip() {
+    const chip = document.getElementById("abo-status-chip");
+    if (!chip) return;
+    if (abo.aktiv) {
+        chip.textContent = "Abo läuft – Bestellungen werden automatisch jede Woche aufgegeben.";
+        chip.className = "abo-status-chip abo-status-aktiv";
+    } else {
+        chip.textContent = "Abo ist deaktiviert – keine automatischen Bestellungen.";
+        chip.className = "abo-status-chip abo-status-inaktiv";
+    }
+}
+
+function renderWochentage() {
+    document.querySelectorAll("#wochentage-row .tag-chip").forEach(btn => {
+        const dow = parseInt(btn.dataset.dow, 10);
+        btn.classList.toggle("tag-chip-aktiv", abo.wochentage.includes(dow));
+    });
+}
+
+function renderAllergene() {
+    document.querySelectorAll("#allergen-grid .allergen-chip").forEach(btn => {
+        const allergen = btn.dataset.allergen;
+        btn.classList.toggle("allergen-chip-aktiv", abo.ausgeschlossene_allergene.includes(allergen));
+    });
+}
+
+function renderNutzertyp() {
+    document.querySelectorAll("#nutzertyp-row .tag-chip").forEach(btn => {
+        btn.classList.toggle("tag-chip-aktiv", btn.dataset.typ === abo.nutzertyp);
+    });
+}
+
+function renderFormular() {
+    renderWochentage();
+    renderAllergene();
+    renderNutzertyp();
+    document.getElementById("switch-vegetarisch").checked = abo.vegetarisch;
+    document.getElementById("switch-vegan").checked = abo.vegan;
+    document.getElementById("switch-aktiv").checked = abo.aktiv;
+    aktualisiereStatusChip();
+}
+
+// ─── Event-Handler ───────────────────────────────────────────────────────────
+
+function initEventListeners() {
+    // Wochentag-Chips
+    document.querySelectorAll("#wochentage-row .tag-chip").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const dow = parseInt(btn.dataset.dow, 10);
+            if (abo.wochentage.includes(dow)) {
+                abo.wochentage = abo.wochentage.filter(d => d !== dow);
+            } else {
+                abo.wochentage = [...abo.wochentage, dow].sort();
+            }
+            renderWochentage();
+        });
+    });
+
+    // Allergen-Chips
+    document.querySelectorAll("#allergen-grid .allergen-chip").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const allergen = btn.dataset.allergen;
+            if (abo.ausgeschlossene_allergene.includes(allergen)) {
+                abo.ausgeschlossene_allergene = abo.ausgeschlossene_allergene.filter(a => a !== allergen);
+            } else {
+                abo.ausgeschlossene_allergene = [...abo.ausgeschlossene_allergene, allergen];
+            }
+            renderAllergene();
+        });
+    });
+
+    // Nutzertyp-Chips
+    document.querySelectorAll("#nutzertyp-row .tag-chip").forEach(btn => {
+        btn.addEventListener("click", () => {
+            abo.nutzertyp = btn.dataset.typ;
+            renderNutzertyp();
+        });
+    });
+
+    // Vegetarisch / Vegan Switches
+    document.getElementById("switch-vegetarisch").addEventListener("change", e => {
+        abo.vegetarisch = e.target.checked;
+    });
+    document.getElementById("switch-vegan").addEventListener("change", e => {
+        abo.vegan = e.target.checked;
+    });
+
+    // Einstellungen speichern
+    document.getElementById("btn-speichern").addEventListener("click", async () => {
+        if (isSaving) return;
+        isSaving = true;
+        const btn = document.getElementById("btn-speichern");
+        btn.disabled = true;
+        btn.textContent = "Wird gespeichert …";
+
+        const err = await doUpsert(abo);
+        isSaving = false;
+        btn.disabled = false;
+        btn.textContent = "Einstellungen speichern";
+
+        if (err) {
+            zeigeNachricht("Fehler: " + err, true);
+        } else {
+            const badge = document.getElementById("save-badge");
+            badge.hidden = false;
+            setTimeout(() => { badge.hidden = true; }, 2500);
+            document.getElementById("abo-message").hidden = true;
+            if (abo.aktiv && currentEmail && abo.wochentage.length > 0) {
+                await autoApplyAbo(abo, currentEmail);
+            }
+        }
+    });
+
+    // Abo aktivieren / deaktivieren
+    document.getElementById("switch-aktiv").addEventListener("change", async e => {
+        if (isTogglingAktiv) {
+            e.target.checked = abo.aktiv;
+            return;
+        }
+        isTogglingAktiv = true;
+        const newAktiv = e.target.checked;
+        const prevAbo = { ...abo };
+        abo.aktiv = newAktiv;
+        aktualisiereStatusChip();
+
+        const err = await doUpsert(abo);
+        isTogglingAktiv = false;
+
+        if (err) {
+            abo.aktiv = prevAbo.aktiv;
+            e.target.checked = prevAbo.aktiv;
+            aktualisiereStatusChip();
+            zeigeNachricht("Fehler beim Aktivieren: " + err, true);
+        } else {
+            document.getElementById("abo-message").hidden = true;
+            if (newAktiv && currentEmail && abo.wochentage.length > 0) {
+                await autoApplyAbo(abo, currentEmail);
+            }
+        }
+    });
+
+    // Anleitung ausklappen
+    document.getElementById("btn-anleitung-toggle").addEventListener("click", () => {
+        const inhalt = document.getElementById("anleitung-inhalt");
+        const chevron = document.getElementById("chevron-anleitung");
+        const btn = document.getElementById("btn-anleitung-toggle");
+        const isOpen = !inhalt.hidden;
+        inhalt.hidden = isOpen;
+        chevron.textContent = isOpen ? "▼" : "▲";
+        btn.setAttribute("aria-expanded", String(!isOpen));
+    });
+}
+
+// ─── Initialisierung ─────────────────────────────────────────────────────────
+
+document.addEventListener("DOMContentLoaded", async () => {
+    // Datum im Header
+    const heute = new Date();
+    const wochentag = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"][heute.getDay()];
+    const datumEl = document.getElementById("datum");
+    if (datumEl) datumEl.textContent = wochentag + ", " + heute.toLocaleDateString("de-DE");
+
+    // Session prüfen
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+
+    if (!user) {
+        window.location.href = "Anmeldestartseite.html";
+        return;
+    }
+
+    currentEmail = (user.email || "").trim();
+    currentAuthUserId = user.id || null;
+
+    // Anzeigename
+    const nameEl = document.getElementById("user-display-name");
+    if (nameEl) {
+        const meta = (user.user_metadata?.full_name || "").trim();
+        nameEl.textContent = meta ? meta.split(/\s+/)[0] : currentEmail;
+    }
+
+    // Abo laden
+    const loadingEl = document.getElementById("abo-loading");
+    const formularEl = document.getElementById("abo-formular");
+
+    const { data, error } = await supabase
+        .from("bestellabos")
+        .select("*")
+        .eq("email", currentEmail)
+        .maybeSingle();
+
+    if (error) {
+        loadingEl.textContent = "Fehler beim Laden der Abo-Einstellungen: " + error.message;
+        return;
+    }
+
+    if (data) {
+        abo = {
+            aktiv: data.aktiv ?? false,
+            wochentage: data.wochentage ?? [],
+            ausgeschlossene_allergene: data.ausgeschlossene_allergene ?? [],
+            vegetarisch: data.vegetarisch ?? false,
+            vegan: data.vegan ?? false,
+            nutzertyp: data.nutzertyp ?? "Studierende",
+        };
+        // Auto-Apply beim Seitenaufruf (falls abo aktiv)
+        if (abo.aktiv && abo.wochentage.length > 0) {
+            autoApplyAbo(abo, currentEmail); // fire & forget
+        }
+    }
+
+    loadingEl.hidden = true;
+    formularEl.hidden = false;
+    initEventListeners();
+    renderFormular();
+});

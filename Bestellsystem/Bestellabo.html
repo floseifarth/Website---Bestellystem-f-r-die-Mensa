@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bestellsystem – Bestellabo</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style-Bestellabo.css">
+</head>
+
+<body>
+    <!-- HEADER: Logo + Datum + Login -->
+    <header class="header">
+        <div class="header-logo-links">
+            <img class="logo-studierendenwerk" src="img/studierendenwerk-stuttgart.png"
+                alt="Studierendenwerk Stuttgart Logo">
+        </div>
+
+        <div class="header-rechts">
+            <img class="logo" src="img/HochschuleEsslingen.svg" alt="Hochschule Esslingen Logo">
+
+            <div class="datum">
+                <span id="datum"></span>
+
+                <div class="profile-box">
+                    <img class="profile-pic" src="img/Profil.svg" alt="Profilbild">
+                    <a id="user-display-name" href="Anmeldestartseite.html">Anmelden ...</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="menuleiste-links">
+        <a class="menu" href="startseite.html">
+            <img class="menu-icon" src="img/haus.svg" alt="">
+            Startseite
+        </a><br>
+        <a class="menu" href="Speiseplan.html">
+            <img class="menu-icon" src="img/speise.svg" alt="">
+            Speiseplan
+        </a><br>
+        <a class="menu" href="Vorbestellungen.html">
+            <img class="menu-icon" src="img/shopping.svg" alt="">
+            Vorbestellung
+        </a><br>
+        <a class="menu" href="Meine Bestellungen.html">
+            <img class="menu-icon" src="img/Liste.svg" alt="">
+            Meine Bestellungen
+        </a><br>
+        <a class="active" href="Bestellabo.html">
+            <img class="menu-icon" src="img/Liste.svg" alt="">
+            Bestellabo
+        </a><br>
+        <a class="menu" href="QR-Code.html">
+            <img class="menu-icon" src="img/QR-Code.svg" alt="">
+            QR-Code
+        </a><br>
+        <a class="menu" href="Profil.html">
+            <img class="menu-icon" src="img/Profil.svg" alt="">
+            Profil
+        </a><br>
+    </div>
+
+    <div class="hauptfeld-mitte">
+        <h1>Bestellabo</h1>
+
+        <!-- Info-Box -->
+        <div class="abo-info-box">
+            <button class="abo-info-toggle" id="btn-anleitung-toggle" aria-expanded="false">
+                Was ist ein Bestellabo?
+                <span class="chevron" id="chevron-anleitung">▼</span>
+            </button>
+            <div class="abo-info-inhalt" id="anleitung-inhalt" hidden>
+                <p>Ein Bestellabo ermöglicht automatische Bestellungen an ausgewählten Wochentagen – ohne wöchentlich
+                    manuell bestellen zu müssen.</p>
+                <strong>So funktioniert es:</strong>
+                <ul>
+                    <li>Wochentage und Kriterien festlegen (Allergene, vegetarisch/vegan).</li>
+                    <li>„Einstellungen speichern" – Kriterien speichern.</li>
+                    <li>„Abo aktiv" einschalten – das Abo läuft ab sofort automatisch jede Woche.</li>
+                    <li>Das Abo bestellt automatisch, wenn das Tagesangebot Ihren Kriterien entspricht.</li>
+                </ul>
+                <strong>Bitte beachten:</strong>
+                <ul>
+                    <li>Bitte deaktivieren Sie das Abo während Ferien oder Urlaub.</li>
+                    <li>Wenn Sie an einem Tag nicht kommen, müssen Sie die Bestellung manuell stornieren.</li>
+                    <li>Abo-Bestellungen zählen zum Tages-Limit (max. 3 Essen pro Tag).</li>
+                </ul>
+                <p class="abo-beispiel"><em>Beispiel: Mo + Mi, vegetarisch, ohne Nüsse → Das Abo bestellt jeden Mo
+                        und Mi automatisch, sofern das Gericht vegetarisch und nussfrei ist.</em></p>
+            </div>
+        </div>
+
+        <!-- Erfolg-Badge für Auto-Bestellung -->
+        <div class="abo-auto-order-badge" id="auto-order-badge" hidden>
+            <span>✔</span>
+            <span id="auto-order-text"></span>
+        </div>
+
+        <!-- Warnhinweis -->
+        <div class="abo-hinweis">
+            <span>⚠</span>
+            <span>Bitte deaktivieren Sie das Abo während Ferien oder Urlaub. An einzelnen Tagen: Bestellung manuell
+                stornieren.</span>
+        </div>
+
+        <!-- Ladeindikator -->
+        <div id="abo-loading" class="abo-loading">Abo-Einstellungen werden geladen …</div>
+
+        <!-- Einstellungen -->
+        <div id="abo-formular" hidden>
+
+            <div class="abo-abschnitt-titel">Einstellungen</div>
+
+            <!-- Wochentage -->
+            <div class="abo-label">Wochentage</div>
+            <div class="wochentage-row" id="wochentage-row">
+                <button class="tag-chip" data-dow="1">Mo</button>
+                <button class="tag-chip" data-dow="2">Di</button>
+                <button class="tag-chip" data-dow="3">Mi</button>
+                <button class="tag-chip" data-dow="4">Do</button>
+                <button class="tag-chip" data-dow="5">Fr</button>
+            </div>
+
+            <!-- Allergene -->
+            <div class="abo-label">Allergene ausschließen</div>
+            <div class="allergen-grid" id="allergen-grid">
+                <button class="allergen-chip" data-allergen="Gluten">Gluten</button>
+                <button class="allergen-chip" data-allergen="Milch">Milch</button>
+                <button class="allergen-chip" data-allergen="Ei">Ei</button>
+                <button class="allergen-chip" data-allergen="Fisch">Fisch</button>
+                <button class="allergen-chip" data-allergen="Sellerie">Sellerie</button>
+                <button class="allergen-chip" data-allergen="Senf">Senf</button>
+                <button class="allergen-chip" data-allergen="Nüsse">Nüsse</button>
+                <button class="allergen-chip" data-allergen="Soja">Soja</button>
+                <button class="allergen-chip" data-allergen="Sesam">Sesam</button>
+            </div>
+
+            <!-- Ernährungsfilter -->
+            <div class="abo-toggle-zeile">
+                <label class="abo-label" for="switch-vegetarisch">Nur vegetarisch</label>
+                <label class="switch">
+                    <input type="checkbox" id="switch-vegetarisch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="abo-toggle-zeile">
+                <label class="abo-label" for="switch-vegan">Nur vegan</label>
+                <label class="switch">
+                    <input type="checkbox" id="switch-vegan">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- Nutzertyp -->
+            <div class="abo-label">Mein Status</div>
+            <div class="nutzertyp-row" id="nutzertyp-row">
+                <button class="tag-chip" data-typ="Studierende">Studierende</button>
+                <button class="tag-chip" data-typ="Bedienstete">Bedienstete</button>
+                <button class="tag-chip" data-typ="Externe">Externe</button>
+            </div>
+
+            <!-- Speichern-Button -->
+            <button class="primary-btn" id="btn-speichern">Einstellungen speichern</button>
+            <p class="abo-save-hint">Speichert Wochentage, Allergene und Ernährungsfilter.</p>
+
+            <div class="abo-save-badge" id="save-badge" hidden>
+                ✔ Einstellungen gespeichert (Wochentage, Allergene, vegan/vegetarisch, Nutzerstatus).
+            </div>
+
+            <!-- Trennlinie -->
+            <div class="abo-abschnitt-titel" style="margin-top: 24px;">Abo aktivieren</div>
+
+            <!-- Aktiv-Toggle -->
+            <div class="abo-status-block">
+                <div class="abo-toggle-zeile">
+                    <div>
+                        <div class="abo-label">Abo aktiv</div>
+                        <div class="abo-label-hint">Schaltet automatische Bestellungen ein/aus</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="switch-aktiv">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="abo-status-chip" id="abo-status-chip">
+                    Abo ist deaktiviert – keine automatischen Bestellungen.
+                </div>
+            </div>
+
+            <!-- Fehlermeldung / Erfolg -->
+            <div id="abo-message" class="abo-message-box" hidden></div>
+
+        </div>
+    </div>
+
+    <!-- FUSSZEILE -->
+    <footer class="fußzeile">
+        (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
+        <a href="Datenschutz.html">Datenschutz</a> |
+        <a href="Impressum.html">Impressum</a> |
+        <a href="Kontakt.html">Kontakt</a>
+    </footer>
+
+    <script type="module" src="script-Bestellabo.js"></script>
+</body>
+
+</html>
