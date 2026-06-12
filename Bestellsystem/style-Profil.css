@@ -115,6 +115,68 @@ body {
     max-width: 1400px;
 }
 
+#profile-container {
+    max-width: 760px;
+}
+
+.profil-datenkarte {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 6px 20px rgba(13, 43, 82, 0.08);
+    overflow: hidden;
+    margin-top: 6px;
+    margin-bottom: 14px;
+}
+
+.profil-datenzeile {
+    display: grid;
+    grid-template-columns: minmax(170px, 230px) 1fr;
+    align-items: center;
+    min-height: 48px;
+    padding: 8px 18px;
+    border-bottom: 1px solid #eef2f7;
+    gap: 10px;
+}
+
+.profil-datenzeile:last-child {
+    border-bottom: none;
+}
+
+.profil-label {
+    color: #475569;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.profil-value {
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 15px;
+    word-break: break-word;
+}
+
+#Abmelde-Container {
+    margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+    .profil-datenzeile {
+        grid-template-columns: 1fr;
+        min-height: 0;
+        padding: 12px 14px;
+        gap: 4px;
+    }
+
+    .profil-label {
+        font-size: 12px;
+    }
+
+    .profil-value {
+        font-size: 14px;
+    }
+}
+
 .abmelden-button {
     display: inline-block;
     background: linear-gradient(135deg, #6a5af9, #8b7bff);

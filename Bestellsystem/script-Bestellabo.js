@@ -165,8 +165,38 @@ function zeigeAutoOrderBadge(text) {
     const badge = document.getElementById("auto-order-badge");
     const textEl = document.getElementById("auto-order-text");
     if (!badge || !textEl) return;
+
+    // Sicherheitsnetz: Niemals anzeigen, wenn das Abo nicht aktiv ist.
+    if (!abo.aktiv) {
+        badge.hidden = true;
+        badge.style.display = "none";
+        return;
+    }
+
     textEl.textContent = text;
     badge.hidden = false;
+    badge.style.display = "flex";
+}
+
+function aktualisiereAutoOrderBadge() {
+    const badge = document.getElementById("auto-order-badge");
+    const textEl = document.getElementById("auto-order-text");
+    if (!badge || !textEl) return;
+
+    if (!abo.aktiv) {
+        badge.hidden = true;
+        badge.style.display = "none";
+        return;
+    }
+
+    const tage = [...abo.wochentage]
+        .sort((a, b) => a - b)
+        .map(dow => WOCHENTAGE_KURZ[dow] || "?")
+        .join(" · ");
+
+    textEl.textContent = `Automatisch bestellt für übernächste Woche: (${tage || "-"}).`;
+    badge.hidden = false;
+    badge.style.display = "flex";
 }
 
 function zeigeNachricht(text, isError) {
@@ -197,6 +227,7 @@ function renderWochentage() {
         const dow = parseInt(btn.dataset.dow, 10);
         btn.classList.toggle("tag-chip-aktiv", abo.wochentage.includes(dow));
     });
+    aktualisiereAutoOrderBadge();
 }
 
 function renderAllergene() {
@@ -220,6 +251,7 @@ function renderFormular() {
     document.getElementById("switch-vegan").checked = abo.vegan;
     document.getElementById("switch-aktiv").checked = abo.aktiv;
     aktualisiereStatusChip();
+    aktualisiereAutoOrderBadge();
 }
 
 // ─── Event-Handler ───────────────────────────────────────────────────────────
@@ -312,9 +344,11 @@ function initEventListeners() {
             abo.aktiv = prevAbo.aktiv;
             e.target.checked = prevAbo.aktiv;
             aktualisiereStatusChip();
+            aktualisiereAutoOrderBadge();
             zeigeNachricht("Fehler beim Aktivieren: " + err, true);
         } else {
             document.getElementById("abo-message").hidden = true;
+            aktualisiereAutoOrderBadge();
             if (newAktiv && currentEmail && abo.wochentage.length > 0) {
                 await autoApplyAbo(abo, currentEmail);
             }

@@ -9,6 +9,10 @@ body {
     padding-bottom: 60px;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 /* HEADER */
 .header {
     height: clamp(70px, 9vw, 125px);

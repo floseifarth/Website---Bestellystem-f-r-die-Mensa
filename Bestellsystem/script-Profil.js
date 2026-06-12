@@ -39,6 +39,32 @@ function formatValue(value) {
     return text ? escapeHtml(text) : "-";
 }
 
+function firstNonEmpty(...values) {
+    for (const value of values) {
+        if (value === null || value === undefined) continue;
+        const text = String(value).trim();
+        if (text) return text;
+    }
+    return "";
+}
+
+function deriveRzKennung(profileData, user) {
+    const explicit = firstNonEmpty(
+        profileData?.["RZ-Kennung"],
+        profileData?.RZ_Kennung,
+        profileData?.rz_kennung,
+        profileData?.username,
+        profileData?.["RZ Kennung"]
+    );
+    if (explicit) return explicit;
+
+    const email = firstNonEmpty(profileData?.email, profileData?.["E-Mail"], user?.email);
+    if (email.includes("@")) {
+        return email.split("@")[0];
+    }
+    return "";
+}
+
 async function abmelden() {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -58,20 +84,36 @@ function renderProfile(profileData, user) {
         return;
     }
 
-    const email = profileData.email || profileData["E-Mail"] || user.email || "-";
-    const fullName = [profileData.Vorname, profileData.Nachname]
-        .map((v) => (v || "").trim())
-        .filter(Boolean)
-        .join(" ");
+    const email = firstNonEmpty(profileData.email, profileData["E-Mail"], user.email, "-");
+    const rzKennung = deriveRzKennung(profileData, user);
+    const vorname = firstNonEmpty(profileData.Vorname, profileData.vorname);
+    const nachname = firstNonEmpty(profileData.Nachname, profileData.nachname);
+
+    const matrikelnummer = firstNonEmpty(profileData.Matrikelnummer, profileData.matrikelnummer);
 
     profileContainer.innerHTML = `
-        <p><strong>Name:</strong> ${formatValue(fullName || "-")}</p>
-        <p><strong>Benutzername:</strong> ${formatValue(profileData["RZ-Kennung"])}</p>
-        <p><strong>Matrikelnummer:</strong> ${formatValue(profileData.Matrikelnummer)}</p>
-        <p><strong>Studiengang:</strong> ${formatValue(profileData.Studiengang)}</p>
-        <p><strong>E-Mail:</strong> ${formatValue(email)}</p>
-        
-        
+        <div class="profil-datenkarte">
+            <div class="profil-datenzeile">
+                <span class="profil-label">Vorname</span>
+                <span class="profil-value">${formatValue(vorname || "-")}</span>
+            </div>
+            <div class="profil-datenzeile">
+                <span class="profil-label">Nachname</span>
+                <span class="profil-value">${formatValue(nachname || "-")}</span>
+            </div>
+            <div class="profil-datenzeile">
+                <span class="profil-label">RZ-Kennung</span>
+                <span class="profil-value">${formatValue(rzKennung || "-")}</span>
+            </div>
+            <div class="profil-datenzeile">
+                <span class="profil-label">Matrikelnummer</span>
+                <span class="profil-value">${formatValue(matrikelnummer || "-")}</span>
+            </div>
+            <div class="profil-datenzeile">
+                <span class="profil-label">E-Mail</span>
+                <span class="profil-value">${formatValue(email)}</span>
+            </div>
+        </div>
     `;
 }
 
