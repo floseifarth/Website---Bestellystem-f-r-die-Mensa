@@ -29,7 +29,6 @@ jobs:
           const yyyy = tomorrow.getFullYear();
           const mm = String(tomorrow.getMonth() + 1).padStart(2, "0");
           const dd = String(tomorrow.getDate()).padStart(2, "0");
-
           const morgen = `${yyyy}-${mm}-${dd}`;
 
           async function main() {
@@ -47,7 +46,6 @@ jobs:
             }
 
             const bestellungen = await response.json();
-
             console.log(`Gefundene Bestellungen für morgen (${morgen}):`, bestellungen.length);
 
             for (const bestellung of bestellungen) {
@@ -70,6 +68,12 @@ jobs:
 
                     from_name: FROM_NAME,
                     reply_to: REPLY_TO,
+
+                    betreff: "🔔 Erinnerung: Ihre MensaGo-Bestellung kann morgen abgeholt werden",
+                    titel: "🔔 MensaGo Erinnerung",
+                    untertitel: "Ihre Vorbestellung ist bald abholbereit",
+                    nachricht: "dies ist eine Erinnerung an Ihre MensaGo-Vorbestellung.",
+                    hinweis: "Bitte denken Sie daran, Ihre Bestellung rechtzeitig in der Mensa abzuholen.",
 
                     gericht: bestellung.gericht_name,
                     preis: bestellung.preis,
