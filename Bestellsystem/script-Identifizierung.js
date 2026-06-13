@@ -187,8 +187,8 @@ async function codeBestaetigen() {
         await upsertRegistriertePerson(username, verifiedEmail, userData.user.id);
 
         sessionStorage.removeItem("pending-registration");
-        setMessage("Code bestätigt. Registrierung abgeschlossen. Weiterleitung...", false);
-        window.location.href = "startseite.html";
+        setMessage("Code bestätigt. Weiterleitung zum Studentenausweis...", false);
+        window.location.href = "Studentenausweis.html";
     } catch (error) {
         setMessage("Unerwarteter Fehler: " + (error?.message || String(error)), true);
     }
