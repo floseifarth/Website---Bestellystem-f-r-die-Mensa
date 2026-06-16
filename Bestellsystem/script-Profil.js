@@ -108,7 +108,7 @@ async function abmelden() {
         return;
     }
 
-    window.location.href = "Anmeldestartseite.html";
+    window.location.href = "index.html";
 }
 
 function renderProfile(profileData, user) {
@@ -205,7 +205,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Kein eingeloggter User? Zurueck zur Anmeldeseite.
     if (!user) {
-        window.location.href = "Anmeldestartseite.html";
+        window.location.href = "index.html";
         return;
     }
 

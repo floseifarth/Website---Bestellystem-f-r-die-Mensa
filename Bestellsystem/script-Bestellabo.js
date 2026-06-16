@@ -381,7 +381,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const user = sessionData?.session?.user;
 
     if (!user) {
-        window.location.href = "Anmeldestartseite.html";
+        window.location.href = "index.html";
         return;
     }
 

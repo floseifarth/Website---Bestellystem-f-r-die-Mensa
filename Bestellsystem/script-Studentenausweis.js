@@ -391,7 +391,7 @@ async function saveStudentCardData() {
         const user = sessionData?.session?.user;
         if (!user) {
             setMessage("Bitte zuerst anmelden.", true);
-            window.location.href = "Anmeldestartseite.html";
+            window.location.href = "index.html";
             return;
         }
 

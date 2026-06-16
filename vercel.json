@@ -1,0 +1,14 @@
+{
+    "redirects": [
+        {
+            "source": "/",
+            "destination": "/Bestellsystem/index.html",
+            "permanent": false
+        },
+        {
+            "source": "/Bestellsystem/Anmeldestartseite.html",
+            "destination": "/Bestellsystem/index.html",
+            "permanent": true
+        }
+    ]
+}
