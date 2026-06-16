@@ -40,10 +40,11 @@
         <label class="feld-label" for="reset-username">RZ-Benutzername</label>
         <input id="reset-username" type="text" class="login-input" placeholder="Benutzername">
 
-        <p class="email-hinweis">Der Einmalcode wurde an die Hochschul-E-Mail von <strong
-                id="reset-email-preview">-</strong> gesendet.</p>
+        <p class="email-hinweis">Der Einmalcode wird an die folgende Hochschul-E-Mail gesendet:</p> <strong
+            id="reset-email-preview">-</strong>
 
         <button id="btn-send-reset-code" class="anmelde-button" type="button">Einmalcode senden</button>
+        <p id="reset-message" class="reset-message"></p>
 
         <label class="feld-label" for="reset-code">Einmalcode</label>
         <input id="reset-code" type="text" class="login-input" inputmode="numeric" maxlength="8"
@@ -57,16 +58,15 @@
             placeholder="Passwort erneut eingeben">
 
         <button id="btn-reset-password" class="anmelde-button" type="button">Passwort ändern</button>
-        <p id="reset-message" class="reset-message"></p>
 
         <a class="zurueck-link" href="Login.html">Zurück zum Login</a>
     </main>
 
     <footer class="fußzeile">
         (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
-        <a href="Datenschutz.html">Datenschutz</a> |
-        <a href="Impressum.html">Impressum</a> |
-        <a href="Kontakt.html">Kontakt</a>
+        <a href="https://www.hs-esslingen.de/datenschutz">Datenschutz</a> |
+        <a href="https://www.hs-esslingen.de/impressum">Impressum</a> |
+        <a href="https://www.hs-esslingen.de/kontakt">Kontakt</a>
     </footer>
 
     <script>
@@ -81,6 +81,7 @@
 
         document.getElementById("datum").innerText = wochentag + ", " + datum;
     </script>
+    <script type="module" src="script-Abo-Status.js"></script>
     <script type="module" src="script-Passwort-zuruecksetzen.js"></script>
 </body>
 

@@ -37,8 +37,8 @@ function getCurrentEmail() {
 function setEmailPreview() {
     const preview = document.getElementById("reset-email-preview");
     if (!preview) return;
-    const username = normalizeText(getUsernameInput());
-    preview.textContent = username || "-";
+    const email = getCurrentEmail();
+    preview.textContent = email || "-";
 }
 
 function clearRecoveryParamsFromUrl() {
@@ -90,11 +90,19 @@ async function activateRecoverySessionFromUrl() {
 }
 
 async function sendResetCode() {
+    const sendCodeButton = document.getElementById("btn-send-reset-code");
+    const originalButtonText = sendCodeButton ? sendCodeButton.textContent : "";
+
     try {
         const email = getCurrentEmail();
         if (!email) {
             setMessage("Bitte zuerst Ihre RZ-Kennung eingeben.", true);
             return;
+        }
+
+        if (sendCodeButton) {
+            sendCodeButton.disabled = true;
+            sendCodeButton.textContent = "Bitte warten...";
         }
 
         setMessage("Einmalcode wird gesendet...", false);
@@ -109,6 +117,11 @@ async function sendResetCode() {
         setMessage("Einmalcode gesendet. Bitte E-Mail-Postfach prüfen.", false);
     } catch (error) {
         setMessage("Unerwarteter Fehler: " + (error?.message || String(error)), true);
+    } finally {
+        if (sendCodeButton) {
+            sendCodeButton.disabled = false;
+            sendCodeButton.textContent = originalButtonText || "Einmalcode senden";
+        }
     }
 }
 

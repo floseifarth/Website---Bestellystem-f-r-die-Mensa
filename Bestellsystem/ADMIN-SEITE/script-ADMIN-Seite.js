@@ -47,8 +47,10 @@ const heutigesPreisBed = document.getElementById("heutiges-preis-bed");
 const heutigesPreisGast = document.getElementById("heutiges-preis-gast");
 const heutigesAllergene = document.getElementById("heutiges-allergene");
 const vorschauListe = document.getElementById("vorschau-liste");
+const DASHBOARD_REFRESH_INTERVAL_MS = 60 * 1000;
 
 let aktiveScanBestellung = null;
+let freieEssenVerfuegbarHeute = 0;
 
 async function hatGueltigeAuthAdminSession() {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -321,6 +323,15 @@ function toIsoFromUnknownDate(value) {
     return toIsoDate(parsed);
 }
 
+function normalizeStatus(rawStatus) {
+    return String(rawStatus || "").trim().toLowerCase();
+}
+
+function istOffeneBestellungStatus(rawStatus) {
+    const status = normalizeStatus(rawStatus);
+    return status === "bestellt";
+}
+
 async function ladeFreieEssenAusDb() {
     const todayIsos = getTodayIsoVarianten();
     const todayIso = todayIsos[0];
@@ -519,6 +530,26 @@ function resetFreeCounts() {
     setCount(zoneCFreeCountGast, 0);
 }
 
+function getFreieAuswahlGesamt() {
+    return getCount(zoneCFreeCountStud) + getCount(zoneCFreeCountBed) + getCount(zoneCFreeCountGast);
+}
+
+function updateFreieEssenInteraktion() {
+    const ausgewaehlt = getFreieAuswahlGesamt();
+    const rest = Math.max(0, freieEssenVerfuegbarHeute - ausgewaehlt);
+
+    freeSteppers.forEach(function (stepper) {
+        const plusBtn = stepper.querySelector(".zone-c-stepper-plus");
+        if (plusBtn) {
+            plusBtn.disabled = rest <= 0;
+        }
+    });
+
+    if (zoneCFreeSaveBtn) {
+        zoneCFreeSaveBtn.disabled = ausgewaehlt === 0 || freieEssenVerfuegbarHeute <= 0 || ausgewaehlt > freieEssenVerfuegbarHeute;
+    }
+}
+
 function showZoneCResult() {
     if (zoneCEmpty) zoneCEmpty.classList.add("is-hidden");
     if (zoneCFreeBox) zoneCFreeBox.classList.add("is-hidden");
@@ -570,23 +601,19 @@ async function ladeHeutigesGericht() {
 }
 
 async function ladeHeutigeBestellungen() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayIso = toIsoDate(today);
-    const todayGerman = toGermanNumericDate(today);
+    const todayIso = getTodayIso();
 
     const { data, error } = await supabase
         .from("Bestellungen")
         .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
-        .eq("status", "bestellt")
-        .or(`bestell_datum.eq.${todayIso},bestell_datum.eq.${todayGerman}`);
+        .limit(5000);
 
     if (error) {
         throw new Error(error.message || "Heutige Bestellungen konnten nicht geladen werden.");
     }
 
     return (data || []).filter(function (row) {
-        return normalizeBestellDatum(row.bestell_datum) === todayIso;
+        return normalizeBestellDatum(row.bestell_datum) === todayIso && istOffeneBestellungStatus(row.status);
     });
 }
 
@@ -599,28 +626,45 @@ async function ladeVorschauNaechste5Tage() {
     start.setHours(0, 0, 0, 0);
     const tage = [];
 
-    for (let i = 1; i <= 5; i += 1) {
+    let offset = 1;
+    while (tage.length < 5 && offset <= 21) {
         const date = new Date(start);
-        date.setDate(start.getDate() + i);
-        tage.push({
-            iso: toIsoDate(date),
-            label: toGermanDateLabel(date)
-        });
+        date.setDate(start.getDate() + offset);
+        const wochentag = date.getDay();
+
+        if (wochentag !== 0 && wochentag !== 6) {
+            tage.push({
+                iso: toIsoDate(date),
+                label: toGermanDateLabel(date)
+            });
+        }
+
+        offset += 1;
     }
 
     const isoDates = tage.map(function (item) {
         return item.iso;
     });
 
-    const [speiseplanRes, bestellungenRes] = await Promise.all([
+    const isoDateSet = new Set(isoDates);
+    const startIso = isoDates[0];
+    const endIso = isoDates[isoDates.length - 1];
+
+    const [speiseplanRes, bestellungenRes, freieEssenRes] = await Promise.all([
         supabase
             .from("Speiseplan")
             .select("Gerichtname, image_url, Ausgabedatum")
-            .in("Ausgabedatum", isoDates),
+            .gte("Ausgabedatum", startIso)
+            .lte("Ausgabedatum", endIso),
         supabase
             .from("Bestellungen")
             .select("bestell_datum, kategorie")
-            .in("bestell_datum", isoDates)
+            .limit(5000),
+        supabase
+            .from("FreieEssen")
+            .select("datum, anzahl")
+            .gte("datum", startIso)
+            .lte("datum", endIso)
     ]);
 
     if (speiseplanRes.error || bestellungenRes.error) {
@@ -628,15 +672,23 @@ async function ladeVorschauNaechste5Tage() {
         return;
     }
 
+    if (freieEssenRes.error) {
+        console.warn("FreieEssen fuer Vorschau konnte nicht geladen werden:", freieEssenRes.error.message || freieEssenRes.error);
+    }
+
     const gerichtByDate = new Map();
     (speiseplanRes.data || []).forEach(function (row) {
-        gerichtByDate.set(String(row.Ausgabedatum), row);
+        const iso = toIsoFromUnknownDate(row.Ausgabedatum);
+        if (!iso || !isoDateSet.has(iso)) {
+            return;
+        }
+        gerichtByDate.set(iso, row);
     });
 
     const countsByDate = new Map();
     (bestellungenRes.data || []).forEach(function (row) {
         const iso = normalizeBestellDatum(row.bestell_datum);
-        if (!iso) {
+        if (!iso || !isoDateSet.has(iso)) {
             return;
         }
 
@@ -649,11 +701,22 @@ async function ladeVorschauNaechste5Tage() {
         counts[key] = (counts[key] || 0) + 1;
     });
 
+    const freieByDate = new Map();
+    (freieEssenRes.data || []).forEach(function (row) {
+        const iso = toIsoFromUnknownDate(row.datum);
+        if (!iso || !isoDateSet.has(iso)) {
+            return;
+        }
+        const current = freieByDate.get(iso) || 0;
+        freieByDate.set(iso, current + signedNumberFromAny(row.anzahl));
+    });
+
     vorschauListe.innerHTML = "";
     tage.forEach(function (item) {
         const gericht = gerichtByDate.get(item.iso);
         const counts = countsByDate.get(item.iso) || emptyCategoryCounts();
         const total = (counts.Studierende || 0) + (counts.Bedienstete || 0) + (counts.Gaeste || 0);
+        const frei = Math.max(0, freieByDate.get(item.iso) || 0);
 
         const article = document.createElement("article");
         article.className = "vorschau-item";
@@ -663,7 +726,7 @@ async function ladeVorschauNaechste5Tage() {
                 <h4>${item.label}</h4>
                 <p>${gericht?.Gerichtname || "Noch kein Gericht eingetragen"}</p>
                 <p class="vorschau-total">Bestellungen gesamt: ${total}</p>
-                <p class="vorschau-detail">Stud: ${counts.Studierende || 0} | Bed: ${counts.Bedienstete || 0} | Gast: ${counts.Gaeste || 0} | Frei: 0</p>
+                <p class="vorschau-detail">Stud: ${counts.Studierende || 0} | Bed: ${counts.Bedienstete || 0} | Gast: ${counts.Gaeste || 0} | Frei: ${frei}</p>
             </div>
         `;
 
@@ -677,13 +740,19 @@ function scanRefAusEingabe(rawInput) {
         return null;
     }
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const istGueltigeUuid = function (value) {
+        return uuidRegex.test(String(value || "").trim());
+    };
+
     if (raw.startsWith("mensa://")) {
         try {
             const parsed = new URL(raw);
             const userId = (parsed.searchParams.get("user_id") || "").trim();
-            if (userId) {
+            if (istGueltigeUuid(userId)) {
                 return { type: "user_id", value: userId };
             }
+            return null;
         } catch (_error) {
             return null;
         }
@@ -691,14 +760,22 @@ function scanRefAusEingabe(rawInput) {
 
     const match = raw.match(/user_id=([^&]+)/i);
     if (match && match[1]) {
-        return { type: "user_id", value: decodeURIComponent(match[1]) };
+        const userId = decodeURIComponent(match[1]).trim();
+        if (istGueltigeUuid(userId)) {
+            return { type: "user_id", value: userId };
+        }
+        return null;
     }
 
     if (raw.includes("@")) {
         return { type: "email", value: raw };
     }
 
-    return { type: "user_id", value: raw };
+    if (istGueltigeUuid(raw)) {
+        return { type: "user_id", value: raw };
+    }
+
+    return null;
 }
 
 function fillScanCardFromRows(rows) {
@@ -726,38 +803,41 @@ function fillScanCardFromRows(rows) {
 
 async function ladeBestellungZumScan(scanRef) {
     const todayIso = getTodayIso();
-    const todayGerman = toGermanNumericDate(new Date());
-
-    let isoQuery = supabase
-        .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
-        .eq("status", "bestellt")
-        .eq("bestell_datum", todayIso);
-
-    let germanQuery = supabase
-        .from("Bestellungen")
-        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status")
-        .eq("status", "bestellt")
-        .eq("bestell_datum", todayGerman);
 
     if (scanRef.type === "user_id") {
-        isoQuery = isoQuery.eq("auth_user_id", scanRef.value);
-        germanQuery = germanQuery.eq("auth_user_id", scanRef.value);
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(String(scanRef.value || "").trim())) {
+            throw new Error("Ungueltige Nutzer-ID im QR-Code.");
+        }
+    }
+
+    let query = supabase
+        .from("Bestellungen")
+        .select("id, auth_user_id, email, gericht_name, kategorie, bestell_datum, status");
+
+    if (scanRef.type === "user_id") {
+        query = query.eq("auth_user_id", scanRef.value);
     } else {
-        isoQuery = isoQuery.ilike("email", scanRef.value);
-        germanQuery = germanQuery.ilike("email", scanRef.value);
+        query = query.ilike("email", scanRef.value);
     }
 
-    const [isoRes, germanRes] = await Promise.all([isoQuery, germanQuery]);
+    const { data, error } = await query;
 
-    if (isoRes.error || germanRes.error) {
-        throw new Error((isoRes.error || germanRes.error)?.message || "Bestellung konnte nicht geladen werden.");
+    if (error) {
+        throw new Error(error.message || "Bestellung konnte nicht geladen werden.");
     }
 
-    const merged = [...(isoRes.data || []), ...(germanRes.data || [])];
+    const offeneBestellungenHeute = (data || []).filter(function (row) {
+        if (!istOffeneBestellungStatus(row.status)) {
+            return false;
+        }
+
+        const normalizedDate = normalizeBestellDatum(row.bestell_datum);
+        return normalizedDate === todayIso;
+    });
+
     const byId = new Map();
-
-    merged.forEach(function (row) {
+    offeneBestellungenHeute.forEach(function (row) {
         byId.set(String(row.id), row);
     });
 
@@ -774,6 +854,8 @@ async function reloadOverview() {
 
     // Keep local cache aligned, even if DB is source of truth.
     saveFreeMealState(freie);
+    freieEssenVerfuegbarHeute = (freie.Studierende || 0) + (freie.Bedienstete || 0) + (freie.Gaeste || 0);
+    updateFreieEssenInteraktion();
 
     const todayRows = await ladeHeutigeBestellungen();
     renderOverviewCounts(countRowsByCategory(todayRows), freie);
@@ -871,13 +953,21 @@ freeSteppers.forEach(function (stepper) {
 
     if (plusBtn && counter) {
         plusBtn.addEventListener("click", function () {
+            const ausgewaehlt = getFreieAuswahlGesamt();
+            if (ausgewaehlt >= freieEssenVerfuegbarHeute) {
+                setFreeFeedbackState(`Nur ${freieEssenVerfuegbarHeute} freie Essen verfuegbar.`, "free-feedback-error");
+                updateFreieEssenInteraktion();
+                return;
+            }
             setCount(counter, getCount(counter) + 1);
+            updateFreieEssenInteraktion();
         });
     }
 
     if (minusBtn && counter) {
         minusBtn.addEventListener("click", function () {
             setCount(counter, getCount(counter) - 1);
+            updateFreieEssenInteraktion();
         });
     }
 });
@@ -933,7 +1023,7 @@ if (scanButton) {
 
             const scanRef = scanRefAusEingabe(rawInput);
             if (!scanRef || !scanRef.value) {
-                setScanState("QR-Inhalt konnte nicht gelesen werden.", "scan-status-error");
+                setScanState("QR-Code ungueltig. Bitte erneut scannen.", "scan-status-error");
                 return;
             }
 
@@ -955,7 +1045,12 @@ if (scanButton) {
             setScanState("Scan erfolgreich. Bestellung geladen.", "scan-status-success");
         } catch (error) {
             console.error(error);
-            setScanState("Scan fehlgeschlagen: " + (error.message || "Unbekannter Fehler"), "scan-status-error");
+            const errorMessage = String(error?.message || "");
+            if (errorMessage.includes("Ungueltige Nutzer-ID im QR-Code")) {
+                setScanState("QR-Code enthaelt keine gueltige Nutzer-ID. Bitte erneut scannen.", "scan-status-error");
+            } else {
+                setScanState("Scan fehlgeschlagen. Bitte erneut versuchen.", "scan-status-error");
+            }
         } finally {
             scanButton.disabled = false;
             scanButton.setAttribute("aria-busy", "false");
@@ -1000,8 +1095,12 @@ if (zoneCOpenFreeBtn && zoneCFreeBox && zoneCResult) {
         zoneCResult.classList.add("is-hidden");
         zoneCFreeBox.classList.remove("is-hidden");
         zoneCOpenFreeBtn.setAttribute("aria-expanded", "true");
+        updateFreieEssenInteraktion();
         if (zoneCFreeFeedback) {
             zoneCFreeFeedback.classList.add("is-hidden");
+        }
+        if (freieEssenVerfuegbarHeute <= 0) {
+            setFreeFeedbackState("Kein Kontingent mehr verfuegbar.", "free-feedback-error");
         }
     });
 }
@@ -1013,6 +1112,7 @@ if (zoneCFreeCancelBtn && zoneCFreeBox) {
             zoneCOpenFreeBtn.setAttribute("aria-expanded", "false");
         }
         resetFreeCounts();
+        updateFreieEssenInteraktion();
     });
 }
 
@@ -1036,6 +1136,8 @@ if (zoneCFreeSaveBtn) {
 
         const verfuegbar = await ladeFreieEssenAusDb();
         const verfuegbarGesamt = verfuegbar.Gaeste || 0;
+        freieEssenVerfuegbarHeute = verfuegbarGesamt;
+        updateFreieEssenInteraktion();
         if (verfuegbarGesamt <= 0) {
             setFreeFeedbackState("Kein Kontingent mehr verfügbar.", "free-feedback-error");
             return;
@@ -1075,6 +1177,42 @@ if (zoneCFreeSaveBtn) {
     });
 }
 
+async function aufgeraeumeAlteBestellungen() {
+    const heuteIso = new Date().toISOString().split("T")[0];
+
+    // Abgeholte Bestellungen vor heute: Löschen
+    const { data: altAbgeholte, error: fetchAbgeholteError } = await supabase
+        .from("Bestellungen")
+        .select("id")
+        .eq("status", "abgeholt")
+        .lt("bestell_datum", heuteIso);
+
+    if (!fetchAbgeholteError && altAbgeholte && altAbgeholte.length > 0) {
+        const ids = altAbgeholte.map(b => b.id);
+        await supabase.from("Bestellungen").delete().in("id", ids);
+        console.log(`${ids.length} alte abgeholte Bestellungen gelöscht`);
+    }
+
+    // Nicht abgeholte Bestellungen vor heute: Archivieren (Status="archiviert")
+    const { data: altNichtAbgeholte, error: fetchNichtAbgeholteError } = await supabase
+        .from("Bestellungen")
+        .select("id")
+        .neq("status", "abgeholt")
+        .neq("status", "archiviert")
+        .lt("bestell_datum", heuteIso);
+
+    if (!fetchNichtAbgeholteError && altNichtAbgeholte && altNichtAbgeholte.length > 0) {
+        const ids = altNichtAbgeholte.map(b => b.id);
+        const { error: updateError } = await supabase
+            .from("Bestellungen")
+            .update({ status: "archiviert" })
+            .in("id", ids);
+        if (!updateError) {
+            console.log(`${ids.length} alte nicht-abgeholte Bestellungen archiviert`);
+        }
+    }
+}
+
 (async function initAdminSeite() {
     const erlaubt = await pruefeAdminZugriff();
     if (!erlaubt) {
@@ -1086,7 +1224,15 @@ if (zoneCFreeSaveBtn) {
         adminLogoutButton.addEventListener("click", adminAbmelden);
     }
 
+    await aufgeraeumeAlteBestellungen();
     updateMainPickupButton();
     hideZoneCResult();
-    ladeDashboard();
+    await ladeDashboard();
+
+    // Keep dashboard numbers aligned with timed backend status transitions (e.g. 13:15).
+    window.setInterval(function () {
+        ladeDashboard().catch(function (error) {
+            console.warn("Dashboard-Aktualisierung fehlgeschlagen:", error?.message || error);
+        });
+    }, DASHBOARD_REFRESH_INTERVAL_MS);
 })();

@@ -114,6 +114,14 @@ body {
     word-break: break-word;
 }
 
+#reset-email-preview {
+    display: block;
+    text-align: center;
+    margin: -8px 0 14px;
+    color: #0d2b52;
+    word-break: break-word;
+}
+
 .anmelde-button {
     background-color: #183b6c;
     color: #ffffff;
@@ -125,6 +133,11 @@ body {
     border: 1px solid #4768b057;
     border-radius: 4px;
     cursor: pointer;
+}
+
+.anmelde-button:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
 }
 
 .reset-message {

@@ -1,14 +1,23 @@
 # Bestellsystem Codebase Audit Report
 **Date:** June 11, 2026  
-**Status:** Production-Ready Assessment Completed
+**Last Updated:** June 16, 2026 [See Status Summary](AUDIT_REPORT_UPDATED.md) 
+**Status:** Original Assessment + June 16 Update
 
 ---
 
 ## Executive Summary
 
-The Bestellsystem (Mensa ordering system) has **critical security vulnerabilities** that must be resolved before production deployment. While the overall architecture using Supabase is sound, there are significant issues in credential exposure, error handling, form validation, and accessibility compliance. The system is **NOT production-ready** in its current state.
+The Bestellsystem (Mensa ordering system) has **critical security vulnerabilities** that must be resolved before production deployment. While the overall architecture using Supabase is sound, there are significant issues in credential exposure, error handling, form validation, and accessibility compliance. 
 
-**Production Readiness: ❌ 25% - Critical Issues Block Deployment**
+**Production Readiness: ❌ 35% - Critical Issues Still Block Deployment** (↑ +10% from initial review)
+
+**Key Findings (June 16, 2026):**
+- ✓ **Database Cleanup:** RegistriertePersonen and StudentenHochschule tables are completely unused - safe to drop
+- ✓ **Active Tables:** Only `students` table is actively used in production code
+- ✗ **Critical Issues Remain:** XSS vulnerabilities, weak password requirements still unresolved
+- ⚠️ **Accessibility:** Empty alt attributes still present (20+ instances)
+
+**Quick Status:** See [AUDIT_REPORT_UPDATED.md](AUDIT_REPORT_UPDATED.md) for current status summary
 
 ---
 

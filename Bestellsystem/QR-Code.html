@@ -58,12 +58,6 @@
             <img class="menu-icon" src="img/Liste.svg" alt="">
             Bestellabo
         </a><br>
-        <!--
-        <a class="menu" href="Guthaben.html">
-            <img class="menu-icon" src="img/Karte.svg" alt="">
-            Guthaben
-        </a><br>
-        -->
         <a class="active" href="QR-Code.html">
             <img class="menu-icon" src="img/QR-Code.svg" alt="">
             QR-Code
@@ -83,19 +77,15 @@
             <div id="qr-code-box" class="qr-code-box">
                 <p>Hier erscheint später Ihr persönlicher QR-Code</p>
             </div>
-
-            <p id="qr-code-hinweis">
-                Der QR-Code wird nach der Registrierung automatisch angezeigt.
-            </p>
         </div>
     </div>
 
     <!-- FUSSZEILE -->
     <footer class="fußzeile">
         (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
-        <a href="Datenschutz.html">Datenschutz</a> |
-        <a href="Impressum.html">Impressum</a> |
-        <a href="Kontakt.html">Kontakt</a>
+        <a href="https://www.hs-esslingen.de/datenschutz">Datenschutz</a> |
+        <a href="https://www.hs-esslingen.de/impressum">Impressum</a> |
+        <a href="https://www.hs-esslingen.de/kontakt">Kontakt</a>
     </footer>
 
     <!-- Datum Script -->
@@ -113,6 +103,7 @@
         document.getElementById("datum").innerText = wochentag + ", " + datum;
     </script>
 
+    <script type="module" src="script-Abo-Status.js"></script>
     <script type="module" src="script-QR-Code.js"></script>
 
 </body>

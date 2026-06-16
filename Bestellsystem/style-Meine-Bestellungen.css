@@ -150,29 +150,6 @@ body {
     color: #0d2b52;
 }
 
-.bestell-schnellnav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 8px 0 12px;
-    flex-wrap: wrap;
-}
-
-.bestell-schnelllink {
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 700;
-    color: #0d2b52;
-    background: #eaf5ff;
-    border: 1px solid #c9e2f7;
-    border-radius: 999px;
-    padding: 6px 10px;
-}
-
-.bestell-schnelllink:hover {
-    background: #dff0ff;
-}
-
 .speiseplan-eintrag {
     width: 600px;
     background: #ffffff;
@@ -253,6 +230,30 @@ body {
     transform: scale(1.05);
 }
 
+.vorbestell-btn:disabled {
+    background: #cbd5e1;
+    color: #64748b;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.75;
+}
+
+.status-badge {
+    display: inline-block;
+    margin-left: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.status-abgeholt {
+    background: #dcfce7;
+    color: #15803d;
+}
+
 .preise {
     font-size: 14px;
     color: #555;
@@ -267,6 +268,22 @@ body {
 
 .preise-zeile {
     margin: 0;
+}
+
+.abo-anteil {
+    font-size: 12px;
+    color: #475569;
+}
+
+.kategorie-status-abgeholt {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #dcfce7;
+    color: #15803d;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .inline-edit-controls {
@@ -308,6 +325,17 @@ body {
     gap: 8px;
     margin-top: 10px;
     flex-wrap: wrap;
+}
+
+.inline-edit-hinweis-wide {
+    grid-column: 1 / -1;
+    margin: 12px 0 0;
+    padding-top: 8px;
+    color: #000000;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: center;
 }
 
 .gericht-bild {

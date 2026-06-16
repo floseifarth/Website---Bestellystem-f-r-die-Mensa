@@ -2,6 +2,20 @@ import { supabase } from "./supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MAX_GERICHTE_PRO_TAG = 3;
+const TEST_BESTELLUNG_HEUTE_AKTIV = true;
+
+function ermittleBestellzeitraum() {
+    if (TEST_BESTELLUNG_HEUTE_AKTIV) {
+        const heute = new Date();
+        heute.setHours(0, 0, 0, 0);
+        return { startDate: heute, endDate: new Date(heute) };
+    }
+
+    const startDate = ermittleStartDerUebernaechstenWoche();
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 4);
+    return { startDate, endDate };
+}
 async function aktualisiereBestellstatusHeader(userId) {
     const badge = document.getElementById("bestellstatus-badge");
     if (!badge) return;
@@ -261,22 +275,26 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     function ladeGerichtzeitraum() {
-        const startDate = ermittleStartDerUebernaechstenWoche();
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 4);
+        const zeitraum = ermittleBestellzeitraum();
+        const startDate = zeitraum.startDate;
+        const endDate = zeitraum.endDate;
 
         const anzeigeElement = document.getElementById("GerichtanzeigeDatum");
         if (anzeigeElement) {
             const startString = formatiereAnzeigeDatum(startDate);
             const endString = formatiereAnzeigeDatum(endDate);
-            anzeigeElement.innerText = `Gerichte für den Zeitraum: ${startString} - ${endString}`;
+            if (TEST_BESTELLUNG_HEUTE_AKTIV) {
+                anzeigeElement.innerText = `Testmodus aktiv: Gerichte für heute (${startString})`;
+            } else {
+                anzeigeElement.innerText = `Gerichte für den Zeitraum: ${startString} - ${endString}`;
+            }
         }
     }
 
     async function ladeGerichteDerUebernaechstenWoche() {
-        const startDate = ermittleStartDerUebernaechstenWoche();
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 4);
+        const zeitraum = ermittleBestellzeitraum();
+        const startDate = zeitraum.startDate;
+        const endDate = zeitraum.endDate;
 
         const startIsoDate = toIsoDate(startDate);
         const endIsoDate = toIsoDate(endDate);
@@ -300,14 +318,19 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         if (!data || data.length === 0) {
-            container.innerHTML = "<p>Für die übernächste Woche (Mo-Fr) sind aktuell keine Gerichte eingetragen.</p>";
+            if (TEST_BESTELLUNG_HEUTE_AKTIV) {
+                container.innerHTML = "<p>Für heute sind aktuell keine Gerichte eingetragen.</p>";
+            } else {
+                container.innerHTML = "<p>Für die übernächste Woche (Mo-Fr) sind aktuell keine Gerichte eingetragen.</p>";
+            }
             return;
         }
 
         // Jedes Gericht bekommt eine eigene Preiswahl plus eigenen Bestellbutton.
         data.forEach(function (gericht, index) {
-            const datumObj = new Date(gericht.Ausgabedatum);
-            datumObj.setMinutes(datumObj.getMinutes() + datumObj.getTimezoneOffset());
+            // Parses the date string (e.g., "2026-06-16") as local date in Berlin timezone
+            // by appending T00:00:00 to prevent UTC conversion
+            const datumObj = new Date(gericht.Ausgabedatum + "T00:00:00");
 
             const dayIndex = datumObj.getDay();
             const tagName = WOCHENTAGE[dayIndex];

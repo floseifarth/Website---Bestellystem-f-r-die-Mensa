@@ -59,12 +59,6 @@
             <img class="menu-icon" src="img/Liste.svg" alt="">
             Bestellabo
         </a><br>
-        <!--
-        <a class="menu" href="Guthaben.html">
-            <img class="menu-icon" src="img/Karte.svg" alt="">
-            Guthaben
-        </a><br>
-        -->
         <a class="menu" href="QR-Code.html">
             <img class="menu-icon" src="img/QR-Code.svg" alt="">
             QR-Code
@@ -78,13 +72,7 @@
 
     <div class="hauptfeld-mitte">
         <h1>Meine Bestellungen</h1>
-        <nav class="bestell-schnellnav" aria-label="Sprungmarken Bestellstatus">
-            <a class="bestell-schnelllink" href="#sektion-laufend">Laufend</a>
-            <a class="bestell-schnelllink" href="#sektion-abgeholt">Abgeholt</a>
-            <a class="bestell-schnelllink" href="#sektion-nicht-abgeholt">Nicht abgeholt</a>
-        </nav>
-
-        <div class="bestell-sektion" id="sektion-laufend">
+        <div class="bestell-sektion">
             <strong>Laufende Bestellungen</strong>
             <div class="bestellfensterfenster" id="order-list-open">
                 <div class="bestell-zeile">
@@ -92,33 +80,14 @@
                 </div>
             </div>
         </div>
-
-        <div class="bestell-sektion" id="sektion-abgeholt">
-            <strong>Abgeholt</strong>
-            <div class="bestellfensterfenster" id="order-list-picked">
-                <div class="bestell-zeile">
-                    Noch keine abgeholte Bestellung.
-                </div>
-            </div>
-        </div>
-
-        <div class="bestell-sektion" id="sektion-nicht-abgeholt">
-            <strong>Nicht abgeholt</strong>
-            <div class="bestellfensterfenster" id="order-list-missed">
-                <div class="bestell-zeile">
-                    Noch keine nicht abgeholte Bestellung.
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <!-- FUSSZEILE -->
     <footer class="fußzeile">
         (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
-        <a href="Datenschutz.html">Datenschutz</a> |
-        <a href="Impressum.html">Impressum</a> |
-        <a href="Kontakt.html">Kontakt</a>
+        <a href="https://www.hs-esslingen.de/datenschutz">Datenschutz</a> |
+        <a href="https://www.hs-esslingen.de/impressum">Impressum</a> |
+        <a href="https://www.hs-esslingen.de/kontakt">Kontakt</a>
     </footer>
 
     <!-- Datum Script -->
@@ -136,6 +105,7 @@
         document.getElementById("datum").innerText = wochentag + ", " + datum;
     </script>
 
+    <script type="module" src="script-Abo-Status.js"></script>
     <script type="module" src="script-Meine-Bestellungen.js"></script>
 
 </body>

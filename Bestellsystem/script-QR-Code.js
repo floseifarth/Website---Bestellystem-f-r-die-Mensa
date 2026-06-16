@@ -3,6 +3,7 @@ import QRCode from "https://esm.sh/qrcode@1.5.4";
 
 const QR_BOX_ID = "qr-code-box";
 const QR_HINT_ID = "qr-code-hinweis";
+const QR_KENNUNG_ID = "qr-code-kennung";
 
 async function aktualisiereBestellstatusHeader(userId) {
     const badge = document.getElementById("bestellstatus-badge");
@@ -43,19 +44,12 @@ async function aktualisiereBestellstatusHeader(userId) {
 }
 
 async function ladeUserIdFuerQr(user) {
-    // Die user_id wird aus students geladen; falls kein Treffer vorhanden ist,
-    // verwenden wir die Auth-ID als sicheren Fallback.
-    const { data, error } = await supabase
-        .from("students")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-    if (error) {
-        throw new Error("user_id konnte nicht aus students geladen werden: " + error.message);
+    // Wichtig: Scan sucht in Bestellungen ueber auth_user_id.
+    // Deshalb muss der QR-Content immer die Supabase Auth-ID enthalten.
+    if (!user || !user.id) {
+        throw new Error("Keine gueltige Auth-ID vorhanden.");
     }
-
-    return data?.user_id || user.id;
+    return user.id;
 }
 
 function baueQrPayload(userId) {
@@ -68,6 +62,95 @@ function setQrHintText(text) {
     if (hintElement) {
         hintElement.textContent = text;
     }
+}
+
+function setQrKennungText(text) {
+    const kennungElement = document.getElementById(QR_KENNUNG_ID);
+    if (!kennungElement) {
+        return;
+    }
+
+    const value = String(text || "").trim();
+    if (!value) {
+        kennungElement.hidden = true;
+        kennungElement.textContent = "";
+        return;
+    }
+
+    kennungElement.hidden = false;
+    kennungElement.textContent = value;
+}
+
+function sanitizeKennungValue(value) {
+    if (typeof value === "number") {
+        return String(value);
+    }
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        return trimmed;
+    }
+    return "";
+}
+
+function mappeNummerAusStudent(row, user) {
+    const kandidatFelder = [
+        row?.matrikelnummer,
+        row?.Matrikelnummer,
+        row?.matrikel,
+        row?.Matrikel,
+        row?.student_number,
+        row?.studentNumber,
+        row?.username,
+        row?.rz_kennung,
+        row?.kennung,
+        row?.user_id
+    ];
+
+    const gefuellt = kandidatFelder
+        .map(sanitizeKennungValue)
+        .find(function (entry) { return Boolean(entry); });
+
+    if (gefuellt) {
+        return gefuellt;
+    }
+
+    const emailPrefix = String(user?.email || "").split("@")[0].trim();
+    if (emailPrefix) {
+        return emailPrefix;
+    }
+
+    return String(user?.id || "").trim();
+}
+
+async function ladeQrKennung(user) {
+    const email = String(user?.email || "").trim();
+    let studentRow = null;
+
+    if (email) {
+        const { data, error } = await supabase
+            .from("students")
+            .select("matrikelnummer, Matrikelnummer, matrikel, Matrikel, student_number, studentNumber, username, rz_kennung, kennung, user_id")
+            .ilike("email", email)
+            .maybeSingle();
+
+        if (!error) {
+            studentRow = data;
+        }
+    }
+
+    if (!studentRow) {
+        const { data, error } = await supabase
+            .from("students")
+            .select("matrikelnummer, Matrikelnummer, matrikel, Matrikel, student_number, studentNumber, username, rz_kennung, kennung, user_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+        if (!error) {
+            studentRow = data;
+        }
+    }
+
+    return mappeNummerAusStudent(studentRow, user);
 }
 
 async function rendereQrCode(userId) {
@@ -138,14 +221,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         // QR basiert auf der eindeutig zugeordneten user_id des eingeloggten Nutzers.
         const userIdFuerQr = await ladeUserIdFuerQr(user);
         await rendereQrCode(userIdFuerQr);
-        setQrHintText("Dieser QR-Code ist eindeutig mit Ihrem Nutzerkonto verknüpft.");
     } catch (error) {
         console.error(error);
         const qrBox = document.getElementById(QR_BOX_ID);
         if (qrBox) {
             qrBox.innerHTML = "<p>QR-Code konnte nicht geladen werden.</p>";
         }
-        setQrHintText("Bitte prüfen Sie, ob in students eine gültige user_id hinterlegt ist.");
     }
 
 });

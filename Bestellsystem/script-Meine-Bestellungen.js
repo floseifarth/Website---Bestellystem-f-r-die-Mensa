@@ -4,6 +4,39 @@ const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "
 const STANDARD_KATEGORIEN = ["Studierende", "Bedienstete", "Gäste"];
 const MAX_GERICHTE_PRO_TAG = 3;
 
+function mappeAboNutzertypZuKategorie(nutzertyp) {
+    const typ = String(nutzertyp || "").trim().toLowerCase();
+    if (typ === "externe" || typ === "gäste" || typ === "gaeste") return "Gäste";
+    if (typ === "bedienstete") return "Bedienstete";
+    return "Studierende";
+}
+
+function ermittleAboQuelleAusRow(row) {
+    if (!row || typeof row !== "object") return null;
+
+    const boolKeys = ["is_abo", "ist_abo", "via_abo", "from_abo", "automatisch"];
+    for (const key of boolKeys) {
+        if (Object.prototype.hasOwnProperty.call(row, key)) {
+            return Boolean(row[key]);
+        }
+    }
+
+    const stringKeys = ["quelle", "source", "bestellquelle", "order_source", "origin"];
+    for (const key of stringKeys) {
+        if (Object.prototype.hasOwnProperty.call(row, key) && row[key] != null) {
+            const value = String(row[key]).trim().toLowerCase();
+            if (["abo", "bestellabo", "auto", "automatic", "automatisch"].includes(value)) {
+                return true;
+            }
+            if (["manuell", "manual", "user"].includes(value)) {
+                return false;
+            }
+        }
+    }
+
+    return null;
+}
+
 async function aktualisiereBestellstatusHeader(userId) {
     const badge = document.getElementById("bestellstatus-badge");
     if (!badge) return;
@@ -123,6 +156,95 @@ function formatiereBestellDatumFuerAnzeige(bestellDatum) {
     return `${wochentag}, ${datumText}`;
 }
 
+function ermittleIsoKalenderwoche(dateObj) {
+    const date = new Date(dateObj);
+    date.setHours(0, 0, 0, 0);
+
+    const dayNum = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - dayNum + 3);
+
+    const firstThursday = new Date(date.getFullYear(), 0, 4);
+    const firstThursdayDayNum = (firstThursday.getDay() + 6) % 7;
+    firstThursday.setDate(firstThursday.getDate() - firstThursdayDayNum + 3);
+
+    const week = 1 + Math.round((date - firstThursday) / 604800000);
+    return { year: date.getFullYear(), week };
+}
+
+function istInAktuellerOderNaechsterKalenderwoche(isoDate) {
+    if (!isoDate) {
+        return false;
+    }
+
+    const zielDatum = new Date(`${isoDate}T00:00:00`);
+    if (Number.isNaN(zielDatum.getTime())) {
+        return false;
+    }
+
+    const heute = new Date();
+    const naechsteWoche = new Date(heute);
+    naechsteWoche.setDate(naechsteWoche.getDate() + 7);
+
+    const kwZiel = ermittleIsoKalenderwoche(zielDatum);
+    const kwHeute = ermittleIsoKalenderwoche(heute);
+    const kwNaechste = ermittleIsoKalenderwoche(naechsteWoche);
+
+    const istAktuelleWoche = kwZiel.year === kwHeute.year && kwZiel.week === kwHeute.week;
+    const istNaechsteWoche = kwZiel.year === kwNaechste.year && kwZiel.week === kwNaechste.week;
+
+    return istAktuelleWoche || istNaechsteWoche;
+}
+
+function parseGanzzahl(value) {
+    const parsed = Number.parseInt(String(value ?? "0"), 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+async function gutschriftFreieEssenFuerDatum(isoDate, anzahl) {
+    const credit = Math.max(0, parseGanzzahl(anzahl));
+    if (!isoDate || credit <= 0) {
+        return;
+    }
+
+    const dateObj = new Date(`${isoDate}T00:00:00`);
+    if (Number.isNaN(dateObj.getTime())) {
+        return;
+    }
+
+    const { data, error } = await supabase
+        .from("FreieEssen")
+        .select("id, anzahl, datum")
+        .eq("datum", isoDate);
+
+    if (error) {
+        throw new Error("Freie Essen konnten nicht geladen werden: " + error.message);
+    }
+
+    const rows = data || [];
+    const targetRow = rows[0];
+
+    if (targetRow) {
+        const currentCount = Math.max(0, parseGanzzahl(targetRow.anzahl));
+        const { error: updateError } = await supabase
+            .from("FreieEssen")
+            .update({ anzahl: currentCount + credit })
+            .eq("id", targetRow.id);
+
+        if (updateError) {
+            throw new Error("Freie Essen konnten nicht aktualisiert werden: " + updateError.message);
+        }
+        return;
+    }
+
+    const { error: insertError } = await supabase
+        .from("FreieEssen")
+        .insert([{ datum: isoDate, anzahl: credit }]);
+
+    if (insertError) {
+        throw new Error("Freie Essen konnten nicht erstellt werden: " + insertError.message);
+    }
+}
+
 async function ladeFehlendeKategorienpreise(gruppe) {
     const ausgabeDatum = toIsoDateFromBestellDatum(gruppe.date);
     if (!ausgabeDatum || !gruppe.name) {
@@ -147,10 +269,24 @@ async function ladeFehlendeKategorienpreise(gruppe) {
     };
 }
 
-async function ladeBestellungenAusDb(user) {
+async function ladeBestellaboKonfiguration(user) {
+    const { data, error } = await supabase
+        .from("bestellabos")
+        .select("aktiv, wochentage, nutzertyp")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+
+    if (error) {
+        return null;
+    }
+
+    return data || null;
+}
+
+async function ladeBestellungenAusDb(user, aboKonfiguration) {
     const { data, error } = await supabase
         .from("Bestellungen")
-        .select("id, bestell_datum, gericht_name, kategorie, preis, image_url, status")
+        .select("*")
         .eq("auth_user_id", user.id)
         .order("created_at", { ascending: true });
 
@@ -160,6 +296,17 @@ async function ladeBestellungenAusDb(user) {
 
     return (data || []).map(function (row) {
         const isoDatum = toIsoDateFromBestellDatum(row.bestell_datum || "");
+        const explizitAbo = ermittleAboQuelleAusRow(row);
+        let isAboBestellung = explizitAbo;
+
+        if (isAboBestellung === null && aboKonfiguration?.aktiv && isoDatum) {
+            const dateObj = new Date(`${isoDatum}T00:00:00`);
+            const dow = Number.isNaN(dateObj.getTime()) ? null : dateObj.getDay();
+            const aboWochentage = Array.isArray(aboKonfiguration.wochentage) ? aboKonfiguration.wochentage : [];
+            const aboKategorie = mappeAboNutzertypZuKategorie(aboKonfiguration.nutzertyp);
+            isAboBestellung = dow !== null && aboWochentage.includes(dow) && (row.kategorie || "Studierende") === aboKategorie;
+        }
+
         return {
             id: row.id,
             date: formatiereBestellDatumFuerAnzeige(row.bestell_datum || ""),
@@ -169,7 +316,8 @@ async function ladeBestellungenAusDb(user) {
             price: row.preis || "-",
             image: row.image_url || "",
             priceByCategory: {},
-            status: String(row.status || "bestellt").trim().toLowerCase()
+            status: String(row.status || "bestellt").trim().toLowerCase(),
+            isAboBestellung: Boolean(isAboBestellung)
         };
     });
 }
@@ -281,8 +429,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Bestellliste im HTML und gespeicherte Bestellungen aus der DB laden
     const orderList = document.getElementById("order-list-open") || document.getElementById("order-list");
-    const orderListPicked = document.getElementById("order-list-picked");
-    const orderListMissed = document.getElementById("order-list-missed");
     let bestellungen = [];
 
     function zaehleBestellungenAnTagOhneIds(isoDate, idsZumAusschliessen) {
@@ -302,53 +448,21 @@ document.addEventListener("DOMContentLoaded", async function () {
         }, 0);
     }
 
-    function renderHistorieListe(container, items, leerText) {
-        if (!container) {
-            return;
-        }
-
-        container.innerHTML = "";
-        if (!items || items.length === 0) {
-            const emptyRow = document.createElement("div");
-            emptyRow.className = "bestell-zeile";
-            emptyRow.innerText = leerText;
-            container.appendChild(emptyRow);
-            return;
-        }
-
-        const sortierte = [...items].sort(function (a, b) {
-            const datumA = toIsoDateFromBestellDatum(a.date) || "9999-12-31";
-            const datumB = toIsoDateFromBestellDatum(b.date) || "9999-12-31";
-            if (datumA !== datumB) {
-                return datumA.localeCompare(datumB);
-            }
-            return (a.name || "").localeCompare(b.name || "", "de");
-        });
-
-        sortierte.forEach(function (item) {
-            const row = document.createElement("div");
-            row.className = "bestell-zeile";
-            row.textContent = `${item.date} | ${item.name} | ${item.category} | ${item.price}`;
-            container.appendChild(row);
-        });
-    }
-
     try {
-        bestellungen = await ladeBestellungenAusDb(user);
+        const aboKonfiguration = await ladeBestellaboKonfiguration(user);
+        bestellungen = await ladeBestellungenAusDb(user, aboKonfiguration);
     } catch (error) {
         alert(error.message || "Bestellungen konnten nicht geladen werden.");
     }
 
     if (!orderList) return;
 
+    const heuteIso = new Date().toISOString().split("T")[0];
     const laufendeBestellungen = bestellungen.filter(function (item) {
-        return item.status === "bestellt";
-    });
-    const abgeholteBestellungen = bestellungen.filter(function (item) {
-        return item.status === "abgeholt";
-    });
-    const nichtAbgeholteBestellungen = bestellungen.filter(function (item) {
-        return item.status === "nicht abgeholt" || item.status === "nicht_abgeholt";
+        const itemIsoDate = item.bestellIsoDate || toIsoDateFromBestellDatum(item.date) || "";
+        const istZukunftOderHeute = itemIsoDate >= heuteIso;
+        const istAktiv = item.status === "bestellt" || item.status === "abgeholt";
+        return istZukunftOderHeute && istAktiv;
     });
 
     // Liste leeren bevor neu befüllt wird
@@ -374,10 +488,21 @@ document.addEventListener("DOMContentLoaded", async function () {
             if (item.priceByCategory) {
                 Object.assign(gruppen[key].priceByCategory, item.priceByCategory);
             }
-            gruppen[key].kategorien.push({ label: item.category || 'Studierende', price: item.price });
+            gruppen[key].kategorien.push({ label: item.category || 'Studierende', price: item.price, status: item.status, isAboBestellung: item.isAboBestellung });
             gruppen[key].priceByCategory[item.category || "Studierende"] = item.price;
             if (item.id !== undefined && item.id !== null) {
                 gruppen[key].ids.push(item.id);
+            }
+        });
+
+        Object.values(gruppen).forEach(function (gruppe) {
+            if (!gruppe.status && bestellungen.length > 0) {
+                const matchingRow = bestellungen.find(function (item) {
+                    return item.date === gruppe.date && item.name === gruppe.name;
+                });
+                if (matchingRow) {
+                    gruppe.status = matchingRow.status;
+                }
             }
         });
 
@@ -397,14 +522,25 @@ document.addEventListener("DOMContentLoaded", async function () {
             const wochentag = dateParts[0] || '';
             const datumText = formatDatum(dateParts[1] || '');
 
-            // Kategorien zählen und Preise summieren
+            // Kategorien zählen und Preise summieren - auch Status berücksichtigen
             const counts = {};
+            const aboCounts = {};
+            const abgehoitCounts = {};
             let gruppenTotal = 0;
+            let alleAbgeholt = true;
             gruppe.kategorien.forEach(function (k) {
                 counts[k.label] = (counts[k.label] || 0) + 1;
+                if (k.status === "abgeholt") {
+                    abgehoitCounts[k.label] = (abgehoitCounts[k.label] || 0) + 1;
+                } else {
+                    alleAbgeholt = false;
+                }
+                if (k.isAboBestellung) {
+                    aboCounts[k.label] = (aboCounts[k.label] || 0) + 1;
+                }
                 gruppenTotal += parsePrice(k.price);
             });
-            const kategorieText = Object.entries(counts).map(([label, n]) => `${n}x ${label}`).join(', ');
+            console.log(`Gruppe ${gruppe.name}: alleAbgeholt=${alleAbgeholt}, kategorien=${gruppe.kategorien.map(k => `${k.label}:${k.status}`).join(", ")}`);
 
             const row = document.createElement("div");
             row.className = "speiseplan-eintrag";
@@ -416,21 +552,27 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <div class="speiseplan-mitte">
                     <img src="${gruppe.image || ''}" class="gericht-bild" alt="">
                     <p>Tagesangebot</p>
-                    <h3>${gruppe.name || ''}</h3>
+                    <h3>
+                        ${gruppe.name || ''}
+                        ${alleAbgeholt ? '<span class="status-badge status-abgeholt">✓ Abgeholt</span>' : ''}
+                    </h3>
                     <div class="preise">
                         <div class="preise-liste">
                             ${Object.entries(counts).map(function ([label, n]) {
-                return `<p class="preise-zeile">${n}x ${label}</p>`;
+                const aboAnteil = aboCounts[label] || 0;
+                const aboText = aboAnteil > 0 ? ` <span class="abo-anteil">(${aboAnteil} Abo)</span>` : "";
+                return `<p class="preise-zeile">${n}x ${label}${aboText}</p>`;
             }).join("")}
                         </div>
                         <p>Gesamt: <strong>${formatPrice(gruppenTotal)}</strong></p>
                     </div>
                 </div>
                 <div class="speiseplan-rechts">
-                    <button type="button" class="vorbestell-btn remove-button">Stornieren</button>
+                    <button type="button" class="vorbestell-btn remove-button" ${alleAbgeholt ? "disabled" : ""}>Stornieren</button>
     
-                    <button type="button" class="vorbestell-btn edit-button">Bearbeiten</button>
-                </div>`;
+                    <button type="button" class="vorbestell-btn edit-button" ${alleAbgeholt ? "disabled" : ""}>Bearbeiten</button>
+                </div>
+                <p class="inline-edit-hinweis-wide" hidden></p>`;
             // Stornieren-Button mit Bestätigungs-Popup verknüpfen
             row.querySelector(".remove-button").addEventListener("click", async function () {
                 const bestaetigt = await StornierungMitEigenemModal("Möchtest du diese Bestellung wirklich stornieren?");
@@ -455,11 +597,20 @@ document.addEventListener("DOMContentLoaded", async function () {
                     return;
                 }
 
+                try {
+                    const stornierteAnzahl = idsToDelete.length;
+                    const isoDate = gruppe.bestellIsoDate || toIsoDateFromBestellDatum(gruppe.date);
+                    await gutschriftFreieEssenFuerDatum(isoDate, stornierteAnzahl);
+                } catch (freieEssenError) {
+                    alert("Storno erfolgreich, aber Freie-Essen-Gutschrift fehlgeschlagen: " + freieEssenError.message);
+                }
+
                 location.reload();
             });
             // Bearbeiten-Button: Mengen direkt im Eintrag anpassen.
             row.querySelector(".edit-button").addEventListener("click", async function () {
                 const preiseContainer = row.querySelector(".preise");
+                const sperrfristHinweis = row.querySelector(".inline-edit-hinweis-wide");
                 if (!preiseContainer) {
                     return;
                 }
@@ -504,6 +655,22 @@ document.addEventListener("DOMContentLoaded", async function () {
                         }
                     });
 
+                    const isoDate = gruppe.bestellIsoDate || toIsoDateFromBestellDatum(gruppe.date);
+                    const anzahlAnDiesemTagOhneGruppe = zaehleBestellungenAnTagOhneIds(isoDate, gruppe.ids || []);
+                    const anzahlInDieserGruppe = zaehleKategorien(countsEdit);
+                    const sperrfristAktiv = istInAktuellerOderNaechsterKalenderwoche(isoDate);
+                    const plusIstSperren = sperrfristAktiv || anzahlAnDiesemTagOhneGruppe + anzahlInDieserGruppe >= MAX_GERICHTE_PRO_TAG;
+
+                    if (sperrfristHinweis) {
+                        if (sperrfristAktiv) {
+                            sperrfristHinweis.textContent = "Bestellungen für diese und die kommende Kalenderwoche können nicht mehr erhöht werden.";
+                            sperrfristHinweis.hidden = false;
+                        } else {
+                            sperrfristHinweis.hidden = true;
+                            sperrfristHinweis.textContent = "";
+                        }
+                    }
+
                     const kategorieZeilen = STANDARD_KATEGORIEN
                         .map(function (label) {
                             const n = countsEdit[label] || 0;
@@ -514,7 +681,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                                     <p class="inline-edit-label">${n}x ${label}</p>
                                     <div class="inline-edit-actions">
                                         <button type="button" class="vorbestell-btn inline-action-btn inline-minus" ${(preisVerfuegbar && n > 0) ? "" : "disabled"}>-</button>
-                                        <button type="button" class="vorbestell-btn inline-action-btn inline-plus" ${preisVerfuegbar ? "" : "disabled"}>+</button>
+                                        <button type="button" class="vorbestell-btn inline-action-btn inline-plus" ${preisVerfuegbar && !plusIstSperren ? "" : "disabled"}>+</button>
                                     </div>
                                 </div>
                             `;
@@ -548,15 +715,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
                         if (plusBtn && !plusBtn.disabled) {
                             plusBtn.addEventListener("click", function () {
-                                const isoDate = gruppe.bestellIsoDate || toIsoDateFromBestellDatum(gruppe.date);
-                                const anzahlAnDiesemTagOhneGruppe = zaehleBestellungenAnTagOhneIds(isoDate, gruppe.ids || []);
-                                const neueAnzahlInDieserGruppe = zaehleKategorien(countsEdit) + 1;
-
-                                if (anzahlAnDiesemTagOhneGruppe + neueAnzahlInDieserGruppe > MAX_GERICHTE_PRO_TAG) {
-                                    alert(`Maximal ${MAX_GERICHTE_PRO_TAG} Gerichte pro Tag erlaubt.`);
-                                    return;
-                                }
-
                                 countsEdit[label] = (countsEdit[label] || 0) + 1;
                                 renderPreise();
                             });
@@ -567,7 +725,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                         location.reload();
                     });
 
-                    preiseContainer.querySelector(".inline-save").addEventListener("click", function () {
+                    preiseContainer.querySelector(".inline-save").addEventListener("click", async function () {
                         const neueEintraege = [];
                         Object.entries(countsEdit).forEach(function ([label, n]) {
                             for (let i = 0; i < n; i += 1) {
@@ -597,33 +755,41 @@ document.addEventListener("DOMContentLoaded", async function () {
                             return;
                         }
 
-                        supabase
+                        const { error: deleteError } = await supabase
                             .from("Bestellungen")
                             .delete()
                             .in("id", idsToReplace)
-                            .eq("auth_user_id", user.id)
-                            .then(async function ({ error: deleteError }) {
-                                if (deleteError) {
-                                    alert("Bearbeiten fehlgeschlagen: " + deleteError.message);
-                                    return;
-                                }
+                            .eq("auth_user_id", user.id);
 
-                                if (neueEintraege.length === 0) {
-                                    location.reload();
-                                    return;
-                                }
+                        if (deleteError) {
+                            alert("Bearbeiten fehlgeschlagen: " + deleteError.message);
+                            return;
+                        }
 
-                                const { error: insertError } = await supabase
-                                    .from("Bestellungen")
-                                    .insert(neueEintraege);
+                        if (neueEintraege.length > 0) {
+                            const { error: insertError } = await supabase
+                                .from("Bestellungen")
+                                .insert(neueEintraege);
 
-                                if (insertError) {
-                                    alert("Bearbeiten fehlgeschlagen: " + insertError.message);
-                                    return;
-                                }
+                            if (insertError) {
+                                alert("Bearbeiten fehlgeschlagen: " + insertError.message);
+                                return;
+                            }
+                        }
 
-                                location.reload();
-                            });
+                        const vorherAnzahl = idsToReplace.length;
+                        const nachherAnzahl = neueEintraege.length;
+                        const freiDifferenz = vorherAnzahl - nachherAnzahl;
+
+                        if (freiDifferenz > 0) {
+                            try {
+                                await gutschriftFreieEssenFuerDatum(isoDate, freiDifferenz);
+                            } catch (freieEssenError) {
+                                alert("Bearbeitung gespeichert, aber Freie-Essen-Gutschrift fehlgeschlagen: " + freieEssenError.message);
+                            }
+                        }
+
+                        location.reload();
                     });
                 };
 
@@ -633,7 +799,4 @@ document.addEventListener("DOMContentLoaded", async function () {
             orderList.appendChild(row);
         });
     }
-
-    renderHistorieListe(orderListPicked, abgeholteBestellungen, "Noch keine abgeholte Bestellung.");
-    renderHistorieListe(orderListMissed, nichtAbgeholteBestellungen, "Noch keine nicht abgeholte Bestellung.");
 });

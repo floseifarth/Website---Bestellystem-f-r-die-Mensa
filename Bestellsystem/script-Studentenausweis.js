@@ -31,9 +31,142 @@ function pickFirstNonEmpty(candidates) {
     return "";
 }
 
+function normalizeWhitespace(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function collectTextFragments(value, fragments = [], depth = 0) {
+    if (depth > 6 || value === null || value === undefined) {
+        return fragments;
+    }
+
+    if (typeof value === "string") {
+        const normalized = normalizeWhitespace(value);
+        if (normalized) {
+            fragments.push(normalized);
+        }
+        return fragments;
+    }
+
+    if (typeof value === "number") {
+        fragments.push(String(value));
+        return fragments;
+    }
+
+    if (Array.isArray(value)) {
+        value.forEach(function (entry) {
+            collectTextFragments(entry, fragments, depth + 1);
+        });
+        return fragments;
+    }
+
+    if (typeof value === "object") {
+        Object.values(value).forEach(function (entry) {
+            collectTextFragments(entry, fragments, depth + 1);
+        });
+    }
+
+    return fragments;
+}
+
+function parseFieldsFromOcrText(rawText) {
+    const text = String(rawText || "");
+    if (!text.trim()) {
+        return { vorname: "", nachname: "", matrikelnummer: "" };
+    }
+
+    const lines = text
+        .split(/\r?\n/)
+        .map(function (line) { return normalizeWhitespace(line); })
+        .filter(Boolean);
+
+    const joined = lines.join("\n");
+
+    const extractByLabel = function (labelPattern) {
+        const line = lines.find(function (entry) {
+            return labelPattern.test(entry);
+        });
+        if (!line) return "";
+
+        const value = line.replace(labelPattern, "").replace(/^[:\-\s]+/, "").trim();
+        return value;
+    };
+
+    const guessNamesFromLines = function () {
+        const invalidPattern = /(matrikel|student|hochschule|esslingen|gueltig|valid|semester|karte|card|ausweis|id|nr\.?|nummer)/i;
+
+        for (const line of lines) {
+            if (invalidPattern.test(line)) {
+                continue;
+            }
+
+            const commaMatch = line.match(/^([A-Za-zÄÖÜäöüß'\-]{2,})\s*,\s*([A-Za-zÄÖÜäöüß'\-]{2,})(?:\s+.*)?$/);
+            if (commaMatch) {
+                return {
+                    nachname: commaMatch[1],
+                    vorname: commaMatch[2]
+                };
+            }
+
+            const words = line
+                .split(/\s+/)
+                .map(function (w) { return w.trim(); })
+                .filter(function (w) { return /^[A-Za-zÄÖÜäöüß'\-]{2,}$/.test(w); });
+
+            if (words.length >= 2) {
+                return {
+                    nachname: words[0],
+                    vorname: words.slice(1).join(" ")
+                };
+            }
+        }
+
+        return { vorname: "", nachname: "" };
+    };
+
+    const vorname = extractByLabel(/^(vorname|firstname|first name)\b\s*[:\-]?/i);
+    const nachname = extractByLabel(/^(nachname|name|lastname|last name|surname|family name)\b\s*[:\-]?/i);
+
+    const matrikelMatch = joined.match(/(?:matrikel(?:nummer)?|matr\.?\s*nr\.?|student(?:en)?\s*nummer|student\s*id)\s*[:\-\s]*([0-9][0-9\s]{4,14})/i);
+    let matrikelnummer = matrikelMatch ? matrikelMatch[1].replace(/\s+/g, "") : "";
+
+    if (!matrikelnummer) {
+        const genericNumberCandidates = Array.from(joined.matchAll(/\b\d{5,12}\b/g)).map(function (m) {
+            return m[0];
+        });
+
+        if (genericNumberCandidates.length > 0) {
+            genericNumberCandidates.sort(function (a, b) {
+                return b.length - a.length;
+            });
+            matrikelnummer = genericNumberCandidates[0];
+        }
+    }
+
+    let finalVorname = vorname;
+    let finalNachname = nachname;
+
+    if (!finalVorname || !finalNachname) {
+        const guessed = guessNamesFromLines();
+        if (!finalVorname) {
+            finalVorname = guessed.vorname || "";
+        }
+        if (!finalNachname) {
+            finalNachname = guessed.nachname || "";
+        }
+    }
+
+    return {
+        vorname: finalVorname,
+        nachname: finalNachname,
+        matrikelnummer
+    };
+}
+
 function mapOcrResultToFields(rawData) {
     const data = rawData && typeof rawData === "object" ? rawData : {};
 
+    // Direkte Felder der Edge Function bevorzugen.
     const vorname = pickFirstNonEmpty([
         data.vorname,
         data.firstName,
@@ -61,6 +194,9 @@ function mapOcrResultToFields(rawData) {
     const matrikelnummer = pickFirstNonEmpty([
         data.matrikelnummer,
         data.matrikel,
+        data.matrikelNummer,
+        data.Matrikelnummer,
+        data.Matrikel,
         data.studentNumber,
         data.student_number,
         data.matriculationNumber,
@@ -69,7 +205,26 @@ function mapOcrResultToFields(rawData) {
         data.person?.studentNumber
     ]);
 
-    return { vorname, nachname, matrikelnummer };
+    if (vorname || nachname || matrikelnummer) {
+        return {
+            vorname,
+            nachname,
+            matrikelnummer: String(matrikelnummer).replace(/\s+/g, "")
+        };
+    }
+
+    // Fallback: OCR-Rohtext aus data.text oder data.lines auswerten.
+    const rawText = pickFirstNonEmpty([
+        data.text,
+        Array.isArray(data.lines) ? data.lines.join("\n") : ""
+    ]);
+
+    if (rawText) {
+        return parseFieldsFromOcrText(rawText);
+    }
+
+    const textFragments = collectTextFragments(rawData);
+    return parseFieldsFromOcrText(textFragments.join("\n"));
 }
 
 async function invokeReadStudentCard(file) {

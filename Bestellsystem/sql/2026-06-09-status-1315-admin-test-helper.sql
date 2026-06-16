@@ -11,6 +11,7 @@ declare
     heute_iso text := to_char(berlin_now::date, 'YYYY-MM-DD');
     heute_de text := to_char(berlin_now::date, 'DD.MM.YYYY');
     betroffene_zeilen integer := 0;
+    aktualisierte_freie integer := 0;
 begin
     update "Bestellungen"
     set status = 'nicht abgeholt'
@@ -23,8 +24,16 @@ begin
     get diagnostics betroffene_zeilen = row_count;
 
     if betroffene_zeilen > 0 then
-        insert into "FreieEssen" (datum, anzahl)
-        values (berlin_now::date, betroffene_zeilen);
+        update "FreieEssen"
+        set anzahl = coalesce(anzahl, 0) + betroffene_zeilen
+        where datum = berlin_now::date;
+
+        get diagnostics aktualisierte_freie = row_count;
+
+        if aktualisierte_freie = 0 then
+            insert into "FreieEssen" (datum, anzahl)
+            values (berlin_now::date, betroffene_zeilen);
+        end if;
     end if;
 
     return betroffene_zeilen;

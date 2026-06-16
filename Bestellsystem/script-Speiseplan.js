@@ -181,9 +181,9 @@ async function ladeGerichte() {
     }
 
     for (const gericht of data) {
-        const datum = new Date(gericht.Ausgabedatum);
-        // +1 wegen UTC-Verschiebung bei reinen Datumswerten
-        datum.setMinutes(datum.getMinutes() + datum.getTimezoneOffset());
+        // Parse the date string (e.g., "2026-06-16") as local date in Berlin timezone
+        // by appending T00:00:00 to prevent UTC conversion
+        const datum = new Date(gericht.Ausgabedatum + "T00:00:00");
         const wochentag = WOCHENTAGE[datum.getDay()];
         const datumFormatiert = datum.toLocaleDateString("de-DE", {
             day: "2-digit", month: "2-digit", year: "numeric"
