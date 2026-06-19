@@ -92,7 +92,7 @@
 
     <!-- Bestellfenster -->
     <div class="bestellfenster">
-        Ihre Vorbestellung: <br><br>
+        <h2 class="bestellfenster-titel">Ihre Vorbestellung</h2>
         <div class="bestellfensterfenster" id="order-list">
             <div class="bestell-zeile">
                 Noch keine Vorbestellung.
@@ -103,7 +103,24 @@
             <span id="order-total" class="preis">0,00 €</span>
         </div>
 
-        <a class="vorbestellung-button" href="Bestätigungsseite.html" href="mailto:">Bestellung abschicken!</a>
+        <button class="vorbestellung-button" type="button">Bestellung abschicken!</button>
+    </div>
+
+    <div id="bestell-confirm-overlay" class="bestell-confirm-overlay" aria-hidden="true">
+        <div class="bestell-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="bestell-confirm-title">
+            <h2 id="bestell-confirm-title">Danke für Ihre Bestellung</h2>
+            <p id="bestell-confirm-subtitle" class="bestell-confirm-subtitle">
+                Ihre Bestellung wurde erfolgreich übermittelt.
+            </p>
+            <div id="bestell-confirm-list" class="bestell-confirm-list"></div>
+            <div class="bestell-confirm-total-row">
+                <span>Gesamt</span>
+                <strong id="bestell-confirm-total">0,00 €</strong>
+            </div>
+            <div class="bestell-confirm-actions">
+                <button id="bestell-confirm-close" type="button" class="bestell-confirm-close">Schließen</button>
+            </div>
+        </div>
     </div>
 
 

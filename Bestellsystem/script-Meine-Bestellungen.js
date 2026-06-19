@@ -595,6 +595,16 @@ document.addEventListener("DOMContentLoaded", async function () {
                     return;
                 }
 
+                row.classList.add("is-editing");
+                const removeButton = row.querySelector(".remove-button");
+                const editButton = row.querySelector(".edit-button");
+                if (removeButton) {
+                    removeButton.disabled = true;
+                }
+                if (editButton) {
+                    editButton.disabled = true;
+                }
+
                 const fehlendePreise = await ladeFehlendeKategorienpreise(gruppe);
                 if (Object.keys(fehlendePreise).length > 0) {
                     gruppe.priceByCategory = {
@@ -650,13 +660,15 @@ document.addEventListener("DOMContentLoaded", async function () {
                         .map(function (label) {
                             const n = countsEdit[label] || 0;
                             const preisVerfuegbar = Boolean(pricesByLabel[label] && pricesByLabel[label] !== "-");
+                            const preisText = pricesByLabel[label] || "-";
 
                             return `
                                 <div class="inline-edit-row" data-label="${label}">
-                                    <p class="inline-edit-label">${n}x ${label}</p>
-                                    <div class="inline-edit-actions">
-                                        <button type="button" class="vorbestell-btn inline-action-btn inline-minus" ${(preisVerfuegbar && n > 0) ? "" : "disabled"}>-</button>
-                                        <button type="button" class="vorbestell-btn inline-action-btn inline-plus" ${preisVerfuegbar && !plusIstSperren ? "" : "disabled"}>+</button>
+                                    <span class="inline-edit-label">${label}: <strong>${preisText}</strong></span>
+                                    <div class="kategorie-stepper inline-edit-actions">
+                                        <button type="button" class="mengen-btn inline-minus" ${(preisVerfuegbar && n > 0) ? "" : "disabled"}>-</button>
+                                        <span class="mengen-anzahl">${n}</span>
+                                        <button type="button" class="mengen-btn inline-plus" ${preisVerfuegbar && !plusIstSperren ? "" : "disabled"}>+</button>
                                     </div>
                                 </div>
                             `;

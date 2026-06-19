@@ -1,175 +1,183 @@
-# Bestellsystem Codebase Audit Report  
-**Original Date:** June 11, 2026  
-**Last Updated:** June 16, 2026  
-**Status:** Partial Fixes Applied - Still Critical Issues Remain
+# Bestellsystem Security & Handover Audit (Updated)
+
+Original Date: 2026-06-11  
+Last Updated: 2026-06-19  
+Scope: Current repository state after server migration and proxy changes
 
 ---
 
 ## Executive Summary
 
-The Bestellsystem (Mensa ordering system) has **critical security vulnerabilities** that must be resolved before production deployment. While the overall architecture using Supabase is sound, there are significant issues in credential exposure, error handling, form validation, and accessibility compliance. 
+The project is improved compared to the previous audit, but it is still **not ready for secure student rollout**.
 
-**Production Readiness: ❌ 35% - Critical Issues Still Block Deployment** (↑ +10% from last audit)
+Current production readiness (security + handover): **55%**
 
-**Key Findings from June 16 Review:**
-- ✓ Confirmed: Only `students` table actively used in code (RegistriertePersonen, StudentenHochschule unused - can be dropped)
-- ✓ Database table usage is clean and consistent
-- ❌ Critical credentials & XSS vulnerabilities STILL UNRESOLVED
-- ⚠️ Password requirements still weak (6 chars instead of 8)
-- ⚠️ Accessibility alt attributes STILL EMPTY
+Reason:
+- Important infrastructure fixes were done (HTTPS-safe frontend path to Supabase via Vercel API proxy).
+- Several high-impact application security and reliability issues are still open.
+- RLS and operational hardening are still not fully verifiable from the repository alone.
 
----
-
-## 🔴 CRITICAL ISSUES - STATUS UPDATE
-
-### Issue #1: Exposed Credentials ❌ UNRESOLVED
-**File:** [supabaseClient.js](Bestellsystem/supabaseClient.js)  
-**Severity:** CRITICAL  
-
-**Current State:**
-- API credentials exposed (expected for anon key, but must verify RLS)
-- Outdated developer comment "Timo Supabase" still in code
-- Suggestion: Clean up comments to just note "Public anon key - RLS required"
-
-**Action:** Remove outdated comment, keep credentials secure via RLS verification
+Decision: **No go-live for broad student usage yet.**
 
 ---
 
-### Issue #2: XSS Vulnerabilities ❌ CRITICAL - STILL PRESENT
-**Files:** [script-Vorbestellungen.js](Bestellsystem/script-Vorbestellungen.js#L294), [script-Speiseplan.js](Bestellsystem/script-Speiseplan.js#L161)  
-**Severity:** CRITICAL  
+## What Improved Since Last Audit
 
-**Problem:**
-```javascript
-// UNSANITIZED - Vulnerable to XSS:
-entry.innerHTML = `<h3>${gericht.Gerichtname}</h3>`;  // Database field could have <script>
-```
-
-**Good Helper Exists:**
-[script-Profil.js](Bestellsystem/script-Profil.js) has working `escapeHtml()` function
-
-**Action Needed:**
-1. Create shared utility file: `shared-utils.js` with escapeHtml() exported
-2. Apply to all innerHTML assignments in:
-   - script-Vorbestellungen.js (line 294)
-   - script-Speiseplan.js (line 161)
-   - script-Meine-Bestellungen.js (line 374)
-3. Priority: URGENT before production
+1. Supabase browser access on HTTPS pages now uses `/api/supabase` instead of direct mixed-content calls.
+2. Vercel rewrite/proxy endpoint exists and is wired (`vercel.json`, `api/supabase/[...path].js`).
+3. Order confirmation uses Supabase Edge Function (`send-order-email`) instead of browser-side EmailJS call.
+4. `script-Profil.js` now escapes user/profile values before injecting HTML.
 
 ---
 
-### Issue #3: Missing RLS Policies ⚠️ PARTIALLY ADDRESSED
-**Database:** Supabase tables  
-**Severity:** CRITICAL  
+## Critical Findings (Must Fix Before Student Rollout)
 
-**Current Observation:**
-- FreieEssen table still has localStorage fallback (indicates RLS may be missing)
-- AdminNutzer queries work properly with email/RZ-Kennung validation
-- Need Supabase Admin Panel verification
+### 1) Stored XSS Risk in Menu/Order Rendering (OPEN)
+Severity: Critical
 
-**Action:** Verify RLS policies exist in Supabase for all tables
+Unsanitized DB fields are rendered into `innerHTML` in multiple user-visible pages:
+- `Bestellsystem/script-Speiseplan.js`
+- `Bestellsystem/script-Vorbestellungen.js`
+- `Bestellsystem/script-Meine-Bestellungen.js`
 
----
+Examples include dish name, allergens, and grouped order labels directly interpolated into template strings.
 
-### Issue #4: Weak Password Requirements ❌ UNRESOLVED
-**Files:** [script-SignUp.js](Bestellsystem/script-SignUp.js#L59), [script-Login.js](Bestellsystem/script-Login.js#L115)  
-**Severity:** HIGH  
-
-**Current:**
-```javascript
-if (password.length < 6) {  // ← Too weak
-```
-
-**Required:** Change to `< 8` (NIST recommendation)
+Required action:
+1. Introduce one shared `escapeHtml()` utility and use it consistently.
+2. Prefer `textContent` for plain text nodes.
+3. Re-test with payload like `<img src=x onerror=alert(1)>` in dish/allergen fields.
 
 ---
 
-### Issue #5: Empty Alt Attributes ❌ UNRESOLVED  
-**Files:** All HTML files (Guthaben.html, startseite.html, etc.)  
-**Severity:** HIGH  
-**Count:** 20+ instances
+### 2) Password Policy Too Weak (OPEN)
+Severity: High (security)
 
-**Example:**
-```html
-<img class="menu-icon" src="img/haus.svg" alt="">  <!-- ← Should be: alt="Startseite Symbol" -->
-```
+Current checks still accept 6-char passwords in:
+- `Bestellsystem/script-Login.js`
+- `Bestellsystem/script-SignUp.js`
+- `Bestellsystem/script-Passwort-zuruecksetzen.js`
 
----
-
-### Issue #6: Case-Sensitivity Navigation Links ❌ UNRESOLVED
-**Files:** Multiple HTML files  
-**Severity:** MEDIUM  
-
-**Problem:**
-- Some files use: `href="Startseite.html"` (capital S)
-- Some use: `href="startseite.html"` (lowercase)
-- Actual file: `startseite.html` (lowercase)
-
-**Files with uppercase link:** Vorbestellungen.html, QR-Code.html, Bestätigungsseite.html  
-**Files with correct link:** Speiseplan.html, Meine Bestellungen.html
-
-**Action:** Standardize all to lowercase `startseite.html`
+Required action:
+1. Raise minimum length to at least 8 (better: 10+ passphrase-friendly).
+2. Keep messaging consistent across signup/login/reset.
+3. Add server-side policy enforcement (not only frontend checks).
 
 ---
 
-## Summary of Issues by Status
+### 3) RLS/Authorization Hardening Not Fully Verifiable (OPEN)
+Severity: Critical
 
-| Issue # | Title | Status | Priority |
-|---------|-------|--------|----------|
-| 1 | Exposed Credentials | ❌ Needs comment cleanup | CRITICAL |
-| 2 | XSS Vulnerabilities | ❌ URGENT - Use escapeHtml | CRITICAL |
-| 3 | RLS Policies | ⚠️ Need Supabase verification | CRITICAL |
-| 4 | Weak Passwords | ❌ Change 6→8 chars | HIGH |
-| 5 | Empty Alt Attributes | ❌ 20+ fixes needed | HIGH |
-| 6 | Case-Sensitivity Links | ❌ Standardize lowercase | MEDIUM |
-| 7+ | (See original AUDIT_REPORT.md for full list) | | |
+Repository shows SQL job logic for `FreieEssen`, but no complete source of truth for active production policies.
+Admin script still includes localStorage fallback in DB error cases.
 
----
-
-## Unused Database Tables (Safe to Drop)
-
-**Found Zero References In Code:**
-- RegistriertePersonen
-- StudentenHochschule
-
-**Recommendation:** Drop these tables from Supabase to clean up schema
+Required action:
+1. Confirm `ENABLE ROW LEVEL SECURITY` for all business tables.
+2. Document and test policies for `authenticated` and admin-only operations.
+3. Remove or heavily restrict localStorage fallback for admin-critical counters.
+4. Add an explicit RLS verification checklist to handover docs.
 
 ---
 
-## Next Steps (Recommended Priority)
+### 4) Transport Security Gap in Upstream Proxy Path (OPEN)
+Severity: Critical
 
-### This Week (CRITICAL):
-1. **Fix XSS** - Create shared-utils.js, apply escapeHtml() to 3 files
-2. **Update passwords** - Change minimum to 8 characters (2 files)
-3. **Remove credentials comment** - Clean up supabaseClient.js
+`api/supabase/[...path].js` proxies to:
+- `http://212.71.201.100:8000`
 
-### Next Week (HIGH):
-4. **Add alt attributes** - 20+ fixes across all HTML files
-5. **Fix navigation links** - Standardize to lowercase (5-6 files)
-6. **Verify RLS policies** - Check Supabase Admin Panel
+This means the serverless proxy-to-upstream leg is plain HTTP.
+If this traffic traverses public networks, bearer tokens/session traffic may be exposed.
 
-### Documentation:
-- Check original AUDIT_REPORT.md for issues #7-24 (full details preserved there)
-- This update focuses only on status changes and June 16 findings
+Required action:
+1. Move upstream to HTTPS endpoint.
+2. If internal-only network is intended, document and enforce network boundaries.
+3. Remove HTTP direct fallback in frontend for non-local production contexts.
 
 ---
 
-## Files to Review/Fix
+## High Priority Findings
 
-```
-CRITICAL:
-- script-Vorbestellungen.js (XSS line 294)
-- script-Speiseplan.js (XSS line 161)
-- script-SignUp.js (password line 59)
-- script-Login.js (password line 115)
-- supabaseClient.js (comment cleanup)
+### 5) Accessibility: Many Empty alt Attributes (OPEN)
+Severity: High (WCAG compliance / usability)
 
-HIGH:
-- Guthaben.html (20+ alt attributes)
-- startseite.html (link consistency)
-- Vorbestellungen.html (navigation links)
-- QR-Code.html (navigation links)
-- Bestätigungsseite.html (navigation links)
+Current grep result shows many empty `alt=""` icon/menu images across main HTML pages.
 
-See original AUDIT_REPORT.md for complete details on all 24 issues.
-```
+Required action:
+1. Add meaningful alt text where informative.
+2. Use `alt=""` only for truly decorative images.
+3. Run accessibility pass (keyboard + screen reader quick checks).
+
+---
+
+### 6) Navigation Link Case Mismatch (OPEN)
+Severity: Medium (stability/deployment)
+
+Both `Startseite.html` and `startseite.html` are referenced in links, while the file is lowercase.
+This can break navigation depending on hosting/filesystem behavior.
+
+Required action:
+1. Standardize all links to `startseite.html`.
+2. Add one redirect fallback only if legacy links must be supported.
+
+---
+
+### 7) Missing Security Headers/CSP at Runtime (OPEN)
+Severity: High
+
+No enforced runtime CSP/HSTS/X-Frame-Options policy is defined in deployment config.
+
+Required action:
+1. Add strict CSP (iteratively tuned for required CDNs).
+2. Add `Strict-Transport-Security`, `X-Frame-Options` or `frame-ancestors`, `Referrer-Policy`.
+3. Validate headers in live environment (not only local).
+
+---
+
+## Medium Priority / Handover Gaps
+
+1. Some async paths still fail with console-only diagnostics and weak user feedback.
+2. No evidence of automated security regression tests (XSS policy checks, auth abuse checks).
+3. No explicit incident/runbook section for ops handover (key rotation, outage fallback, RLS rollback).
+
+---
+
+## Updated Go-Live Gate (Student Use)
+
+All items below should be completed before declaring handover done:
+
+1. XSS remediated in all affected render paths and regression-tested.
+2. Password policy raised and consistently enforced frontend + backend.
+3. Production RLS policies verified and documented per table/role.
+4. Proxy upstream switched to HTTPS (or network-isolated equivalent with documented controls).
+5. Security headers enabled and validated on live URL.
+6. Empty alt attributes cleaned and basic accessibility pass completed.
+7. Navigation case mismatch fixed everywhere.
+8. Admin fallback behavior hardened (no silent localStorage shadow state for critical counters).
+9. Short handover document added: architecture, secrets rotation, RLS map, backup/restore, on-call steps.
+
+---
+
+## Suggested Execution Order (Fastest Risk Reduction)
+
+Phase 1 (Day 1-2):
+1. XSS fixes + tests
+2. Password policy upgrade
+3. Navigation case cleanup
+
+Phase 2 (Day 2-4):
+1. RLS verification + docs
+2. Remove/restrict admin local fallback
+3. Accessibility alt-text sweep
+
+Phase 3 (Day 4-5):
+1. HTTPS upstream proxy hardening
+2. Security headers + CSP rollout
+3. Final pre-handover smoke test and sign-off
+
+---
+
+## Final Assessment (2026-06-19)
+
+Status: **NOT handover-ready yet**  
+Primary blockers: **XSS, RLS verification, transport security, password strength**
+
+Once the Go-Live Gate above is fully checked, the system can be reassessed for student rollout and formal handover.

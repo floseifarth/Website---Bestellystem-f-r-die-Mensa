@@ -151,7 +151,7 @@ body {
 }
 
 .speiseplan-eintrag {
-    width: 600px;
+    width: 570px;
     background: #ffffff;
     border-radius: 18px;
     padding: 16px 18px;
@@ -163,6 +163,13 @@ body {
     align-items: center;
     gap: 20px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.speiseplan-eintrag.is-editing {
+    width: min(730px, calc(100vw - 430px));
+    grid-template-columns: 120px minmax(280px, 360px) 140px;
+    gap: 12px;
+    justify-content: start;
 }
 
 .speiseplan-eintrag:hover {
@@ -204,7 +211,21 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: flex-end;
-    gap: 8px;
+    gap: 16px;
+}
+
+.speiseplan-eintrag.is-editing .speiseplan-rechts {
+    align-items: stretch;
+    align-self: center;
+    width: 140px;
+}
+
+.speiseplan-rechts .vorbestell-btn {
+    width: 145px;
+}
+
+.speiseplan-eintrag.is-editing .speiseplan-rechts .vorbestell-btn {
+    width: 100%;
 }
 
 .vorbestell-btn {
@@ -289,29 +310,104 @@ body {
 .inline-edit-controls {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    width: 100%;
+    gap: 8px;
+    width: min(340px, 100%);
     margin-top: 10px;
+    padding-top: 6px;
+    align-items: flex-start;
+}
+
+.speiseplan-eintrag.is-editing .inline-edit-controls {
+    width: auto;
 }
 
 .inline-edit-row {
-    display: flex;
+    display: inline-grid;
+    grid-template-columns: 190px auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: 100%;
+    justify-content: flex-start;
+    gap: 4px;
+    width: fit-content;
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #dce8f6;
+    background: #f8fbff;
 }
 
 .inline-edit-label {
     margin: 0;
     color: #0d2b52;
     font-size: 14px;
+    white-space: nowrap;
+    max-width: none;
 }
 
 .inline-edit-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    margin-left: 0;
+}
+
+.kategorie-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mengen-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    background: #6655cc;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 22px;
+    cursor: pointer;
+}
+
+.mengen-btn:disabled {
+    background: #cccccc;
+    color: #ffffff;
+    cursor: not-allowed;
+}
+
+.mengen-btn:hover:not(:disabled) {
+    background: #5b4cc2;
+}
+
+.mengen-anzahl {
+    width: 22px;
+    text-align: center;
+    font-weight: 700;
+    color: #0d2b52;
+}
+
+.speiseplan-eintrag.is-editing .speiseplan-rechts {
+    gap: 16px;
+}
+
+.speiseplan-eintrag.is-editing .speiseplan-rechts .vorbestell-btn {
+    background: linear-gradient(90deg, #1aa3b0, #1c86c8);
+}
+
+.speiseplan-eintrag.is-editing .remove-button,
+.speiseplan-eintrag.is-editing .edit-button {
+    background: #d7dbe3;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 1;
+}
+
+.speiseplan-eintrag.is-editing .remove-button:disabled,
+.speiseplan-eintrag.is-editing .edit-button:disabled {
+    background: #d7dbe3;
+    color: #ffffff;
+    border: none;
 }
 
 .inline-action-btn {
@@ -321,10 +417,17 @@ body {
 }
 
 .inline-edit-footer {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+    width: min(280px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.inline-edit-footer .vorbestell-btn {
+    width: 100%;
 }
 
 .inline-edit-hinweis-wide {

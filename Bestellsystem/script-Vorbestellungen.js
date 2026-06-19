@@ -4,6 +4,11 @@ import { loadCurrentUserContext } from "./userContext.js";
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MAX_GERICHTE_PRO_TAG = 3;
 const TEST_BESTELLUNG_HEUTE_AKTIV = true;
+const CATEGORY_BY_PRICE_KEY = {
+    stud: "Studierende",
+    bed: "Bedienstete",
+    guest: "Gäste"
+};
 
 function ermittleBestellzeitraum() {
     if (TEST_BESTELLUNG_HEUTE_AKTIV) {
@@ -83,6 +88,46 @@ function toEuroText(priceValue) {
     return String(priceValue);
 }
 
+function normalizeErnaehrungstyp(rawValue) {
+    const text = String(rawValue || "")
+        .trim()
+        .toLowerCase()
+        .replace(/ä/g, "ae")
+        .replace(/ö/g, "oe")
+        .replace(/ü/g, "ue")
+        .replace(/ß/g, "ss");
+
+    if (!text) {
+        return null;
+    }
+    if (text.includes("vegan")) {
+        return "vegan";
+    }
+    if (text.includes("nicht vegetarisch") || text.includes("nicht-vegetarisch") || text.includes("fleisch")) {
+        return "nicht vegetarisch";
+    }
+    if (text.includes("vegetar")) {
+        return "vegetarisch";
+    }
+
+    return null;
+}
+
+function renderErnaehrungsBadge(rawValue) {
+    const normalized = normalizeErnaehrungstyp(rawValue);
+    if (!normalized) {
+        return "";
+    }
+
+    const classMap = {
+        vegan: "ernaehrung-vegan",
+        vegetarisch: "ernaehrung-vegetarisch",
+        "nicht vegetarisch": "ernaehrung-nicht-vegetarisch"
+    };
+
+    return `<span class="ernaehrung-badge ${classMap[normalized]}">${normalized}</span>`;
+}
+
 function ermittleStartDerUebernaechstenWoche() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -130,6 +175,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     aktualisiereBestellstatusHeader(user.id);
     let orderItems = [];
     let bestehendeBestellungenProTag = {};
+    let orderUiSyncCallbacks = [];
 
     async function ladeAlleBestehendenBestellungenProTag(userId) {
         const { data, error } = await supabase
@@ -199,6 +245,27 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         totalElement.innerText = formatPrice(total);
+
+        orderUiSyncCallbacks.forEach(function (syncCallback) {
+            try {
+                syncCallback();
+            } catch (error) {
+                console.warn("Order-UI Sync fehlgeschlagen:", error);
+            }
+        });
+    }
+
+    function countOrderItemsForSelection(dish, selectedPriceKey) {
+        const selectedCategory = CATEGORY_BY_PRICE_KEY[selectedPriceKey];
+        if (!selectedCategory) {
+            return 0;
+        }
+
+        return orderItems.filter(function (item) {
+            return item.bestellIsoDate === dish.isoDate
+                && item.name === dish.name
+                && item.category === selectedCategory;
+        }).length;
     }
 
     function addOrderItem(dish, selectedPriceKey) {
@@ -209,18 +276,12 @@ document.addEventListener("DOMContentLoaded", async function () {
             guest: dish.priceGuest
         };
 
-        const categoryMap = {
-            stud: "Studierende",
-            bed: "Bedienstete",
-            guest: "Gäste"
-        };
-
         const selectedPrice = priceMap[selectedPriceKey];
-        const selectedCategory = categoryMap[selectedPriceKey];
+        const selectedCategory = CATEGORY_BY_PRICE_KEY[selectedPriceKey];
 
         if (!selectedPrice || selectedPrice === "-") {
             alert("Für diese Kategorie ist aktuell kein Preis hinterlegt.");
-            return;
+            return false;
         }
 
         const bestehendeAnzahl = bestehendeBestellungenProTag[dish.isoDate] || 0;
@@ -230,7 +291,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (bestehendeAnzahl + anzahlImWarenkorb >= MAX_GERICHTE_PRO_TAG) {
             alert(`Maximal ${MAX_GERICHTE_PRO_TAG} Gerichte pro Tag erlaubt.`);
-            return;
+            return false;
         }
 
         orderItems.push({
@@ -248,6 +309,28 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
 
         updateOrderSummary();
+        return true;
+    }
+
+    function removeOrderItem(dish, selectedPriceKey) {
+        const selectedCategory = CATEGORY_BY_PRICE_KEY[selectedPriceKey];
+        if (!selectedCategory) {
+            return false;
+        }
+
+        const index = orderItems.findIndex(function (item) {
+            return item.bestellIsoDate === dish.isoDate
+                && item.name === dish.name
+                && item.category === selectedCategory;
+        });
+
+        if (index === -1) {
+            return false;
+        }
+
+        orderItems.splice(index, 1);
+        updateOrderSummary();
+        return true;
     }
 
     function ladeGerichtzeitraum() {
@@ -277,7 +360,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         const { data, error } = await supabase
             .from("Speiseplan")
-            .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstet, PreisGast, image_url, Ausgabedatum")
+            .select("*")
             .gte("Ausgabedatum", startIsoDate)
             .lte("Ausgabedatum", endIsoDate)
             .order("Ausgabedatum", { ascending: true });
@@ -286,6 +369,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (!container) return;
 
         container.innerHTML = "";
+        orderUiSyncCallbacks = [];
 
         if (error) {
             console.error("Fehler beim Laden der Vorbestellungs-Gerichte:", error);
@@ -320,11 +404,11 @@ document.addEventListener("DOMContentLoaded", async function () {
                 priceGuest: toEuroText(gericht.PreisGast),
                 image: gericht.image_url || "img/Profil.svg",
                 allergene: gericht.Allergene || "keine Angabe",
+                ernaehrungstyp: gericht.ernaehrungstyp || gericht.Ernaehrungstyp || gericht["Ernährungstyp"] || gericht.ernaehrung || null,
                 datumText,
                 isoDate: toIsoDate(datumObj)
             };
 
-            const radioName = `preis-${index}`;
             const entry = document.createElement("div");
             entry.className = "speiseplan-eintrag";
             entry.innerHTML = `
@@ -339,41 +423,113 @@ document.addEventListener("DOMContentLoaded", async function () {
                     <h3>${dish.name}</h3>
 
                     <p class="allergene">Allergene: ${dish.allergene}</p>
+                    ${renderErnaehrungsBadge(dish.ernaehrungstyp)}
                     <div class="preise">
-                        <label><input type="radio" name="${radioName}" value="stud"> Studierende: <strong>${dish.priceStud}</strong></label><br>
-                        <label><input type="radio" name="${radioName}" value="bed"> Bedienstete: <strong>${dish.priceBed}</strong></label><br>
-                        <label><input type="radio" name="${radioName}" value="guest"> Gäste: <strong>${dish.priceGuest}</strong></label>
+                        <div class="preis-zeile" data-key="stud">
+                            <span class="preis-text">Studierende: <strong>${dish.priceStud}</strong></span>
+                            <div class="kategorie-stepper" data-key="stud">
+                                <button type="button" class="mengen-btn mengen-minus" data-key="stud">-</button>
+                                <span class="mengen-anzahl" data-key="stud">0</span>
+                                <button type="button" class="mengen-btn mengen-plus" data-key="stud">+</button>
+                            </div>
+                        </div>
+                        <div class="preis-zeile" data-key="bed">
+                            <span class="preis-text">Bedienstete: <strong>${dish.priceBed}</strong></span>
+                            <div class="kategorie-stepper" data-key="bed">
+                                <button type="button" class="mengen-btn mengen-minus" data-key="bed">-</button>
+                                <span class="mengen-anzahl" data-key="bed">0</span>
+                                <button type="button" class="mengen-btn mengen-plus" data-key="bed">+</button>
+                            </div>
+                        </div>
+                        <div class="preis-zeile" data-key="guest">
+                            <span class="preis-text">Gäste: <strong>${dish.priceGuest}</strong></span>
+                            <div class="kategorie-stepper" data-key="guest">
+                                <button type="button" class="mengen-btn mengen-minus" data-key="guest">-</button>
+                                <span class="mengen-anzahl" data-key="guest">0</span>
+                                <button type="button" class="mengen-btn mengen-plus" data-key="guest">+</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="speiseplan-rechts">
-                    <button type="button" class="vorbestell-btn" disabled>Zur Bestellung hinzufügen</button>
+                    <p class="mengen-hinweis">Maximal ${MAX_GERICHTE_PRO_TAG} Gerichte pro Tag</p>
                 </div>
             `;
 
-            const addButton = entry.querySelector(".vorbestell-btn");
-            const priceRadios = entry.querySelectorAll(`input[name="${radioName}"]`);
+            const quantityElements = {
+                stud: entry.querySelector('.mengen-anzahl[data-key="stud"]'),
+                bed: entry.querySelector('.mengen-anzahl[data-key="bed"]'),
+                guest: entry.querySelector('.mengen-anzahl[data-key="guest"]')
+            };
 
-            priceRadios.forEach(function (radio) {
-                radio.addEventListener("change", function () {
-                    // Der Button wird erst nach gueltiger Preiswahl freigeschaltet.
-                    if (addButton) addButton.disabled = false;
+            const minusButtons = {
+                stud: entry.querySelector('.mengen-minus[data-key="stud"]'),
+                bed: entry.querySelector('.mengen-minus[data-key="bed"]'),
+                guest: entry.querySelector('.mengen-minus[data-key="guest"]')
+            };
+
+            const plusButtons = {
+                stud: entry.querySelector('.mengen-plus[data-key="stud"]'),
+                bed: entry.querySelector('.mengen-plus[data-key="bed"]'),
+                guest: entry.querySelector('.mengen-plus[data-key="guest"]')
+            };
+
+            function updateDishStepperUi() {
+                const bestehendeAnzahl = bestehendeBestellungenProTag[dish.isoDate] || 0;
+                const anzahlImWarenkorb = orderItems.filter(function (item) {
+                    return item.bestellIsoDate === dish.isoDate;
+                }).length;
+                const hatTagKapazitaet = bestehendeAnzahl + anzahlImWarenkorb < MAX_GERICHTE_PRO_TAG;
+
+                ["stud", "bed", "guest"].forEach(function (priceKey) {
+                    const selectedPrice = {
+                        stud: dish.priceStud,
+                        bed: dish.priceBed,
+                        guest: dish.priceGuest
+                    }[priceKey];
+
+                    const count = countOrderItemsForSelection(dish, priceKey);
+                    const quantityElement = quantityElements[priceKey];
+                    const plusButton = plusButtons[priceKey];
+                    const minusButton = minusButtons[priceKey];
+
+                    if (quantityElement) {
+                        quantityElement.textContent = String(count);
+                    }
+
+                    const preisVerfuegbar = Boolean(selectedPrice && selectedPrice !== "-");
+                    if (plusButton) {
+                        plusButton.disabled = !preisVerfuegbar || !hatTagKapazitaet;
+                    }
+                    if (minusButton) {
+                        minusButton.disabled = count === 0;
+                    }
+                });
+            }
+
+            Object.keys(plusButtons).forEach(function (priceKey) {
+                const plusButton = plusButtons[priceKey];
+                if (!plusButton) {
+                    return;
+                }
+                plusButton.addEventListener("click", function () {
+                    addOrderItem(dish, priceKey);
                 });
             });
 
-            if (addButton) {
-                addButton.addEventListener("click", function () {
-                    const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
-                    if (!selectedRadio) {
-                        alert("Bitte zuerst eine Preiskategorie auswählen.");
-                        return;
-                    }
-
-                    addOrderItem(dish, selectedRadio.value);
-                    selectedRadio.checked = false;
-                    addButton.disabled = true;
+            Object.keys(minusButtons).forEach(function (priceKey) {
+                const minusButton = minusButtons[priceKey];
+                if (!minusButton) {
+                    return;
+                }
+                minusButton.addEventListener("click", function () {
+                    removeOrderItem(dish, priceKey);
                 });
-            }
+            });
+
+            orderUiSyncCallbacks.push(updateDishStepperUi);
+            updateDishStepperUi();
 
             container.appendChild(entry);
         });
@@ -449,7 +605,74 @@ document.addEventListener("DOMContentLoaded", async function () {
             throw new Error("Bestätigungsmail konnte nicht gesendet werden.");
         }
     }
-    // Beim Abschicken: in der DB speichern und erst dann weiterleiten.
+
+    function escapeHtml(value) {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function zeigeBestellPopup(gespeicherteBestellungen, mailHinweis) {
+        const overlay = document.getElementById("bestell-confirm-overlay");
+        const listElement = document.getElementById("bestell-confirm-list");
+        const totalElement = document.getElementById("bestell-confirm-total");
+        const subtitleElement = document.getElementById("bestell-confirm-subtitle");
+
+        if (!overlay || !listElement || !totalElement || !subtitleElement) {
+            return;
+        }
+
+        listElement.innerHTML = gespeicherteBestellungen
+            .map(function (item) {
+                return `<div class="bestell-confirm-item">
+                    <div>
+                        <strong>1x ${escapeHtml(item.name)}</strong>
+                        <span>${escapeHtml(item.date)} | ${escapeHtml(item.category)}</span>
+                    </div>
+                    <strong>${escapeHtml(item.price)}</strong>
+                </div>`;
+            })
+            .join("");
+
+        const total = gespeicherteBestellungen.reduce(function (sum, item) {
+            return sum + parsePrice(item.price);
+        }, 0);
+
+        totalElement.textContent = formatPrice(total);
+        subtitleElement.textContent = mailHinweis || "Ihre Bestellung wurde erfolgreich übermittelt.";
+
+        overlay.classList.add("is-visible");
+        overlay.setAttribute("aria-hidden", "false");
+    }
+
+    function schliesseBestellPopup() {
+        const overlay = document.getElementById("bestell-confirm-overlay");
+        if (!overlay) {
+            return;
+        }
+
+        overlay.classList.remove("is-visible");
+        overlay.setAttribute("aria-hidden", "true");
+    }
+
+    const popupCloseButton = document.getElementById("bestell-confirm-close");
+    if (popupCloseButton) {
+        popupCloseButton.addEventListener("click", schliesseBestellPopup);
+    }
+
+    const popupOverlay = document.getElementById("bestell-confirm-overlay");
+    if (popupOverlay) {
+        popupOverlay.addEventListener("click", function (event) {
+            if (event.target === popupOverlay) {
+                schliesseBestellPopup();
+            }
+        });
+    }
+
+    // Beim Abschicken: in der DB speichern und danach Popup anzeigen.
     const abschickenButton = document.querySelector(".vorbestellung-button");
     if (abschickenButton) {
         abschickenButton.addEventListener("click", async function (e) {
@@ -462,15 +685,23 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             try {
                 const nutzerEmail = userContext.email;
+                const gespeicherteBestellungen = orderItems.map(item => ({ ...item }));
                 await speichereBestellungen(orderItems, nutzerEmail);
+
+                let mailHinweis = "Ihre Bestellung wurde erfolgreich übermittelt.";
                 try {
                     await sendeBestellbestaetigung(user, orderItems, nutzerEmail);
                 } catch (mailError) {
-                    alert("Bestellung gespeichert, aber Bestätigungsmail konnte nicht gesendet werden. " + (mailError?.message || ""));
-                    window.location.href = "Bestätigungsseite.html";
-                    return;
+                    mailHinweis = "Ihre Bestellung wurde gespeichert. Die Bestätigungsmail konnte leider nicht gesendet werden.";
                 }
-                window.location.href = "Bestätigungsseite.html";
+
+                // Nach erfolgreichem Speichern Warenkorb leeren und Status aktualisieren.
+                orderItems = [];
+                updateOrderSummary();
+                bestehendeBestellungenProTag = await ladeAlleBestehendenBestellungenProTag(user.id);
+                await aktualisiereBestellstatusHeader(user.id);
+
+                zeigeBestellPopup(gespeicherteBestellungen, mailHinweis);
             } catch (error) {
                 alert("Bestellungen konnten nicht gespeichert werden: " + error.message);
             }

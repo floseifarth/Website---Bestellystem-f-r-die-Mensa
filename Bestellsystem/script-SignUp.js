@@ -1,3 +1,5 @@
+import { supabase } from "./supabaseClient.js";
+
 function setMessage(text, isError) {
     const messageElement = document.getElementById("signup-message");
     if (!messageElement) return;
@@ -35,10 +37,58 @@ function togglePasswordVisibility(inputId, buttonId) {
     });
 }
 
-function registerAndRedirect() {
+async function isAlreadyRegisteredInStudents(email) {
+    const { data, error } = await supabase
+        .from("students")
+        .select("email")
+        .ilike("email", email)
+        .maybeSingle();
+
+    if (error) {
+        throw new Error("Registrierungsstatus konnte nicht geprüft werden: " + error.message);
+    }
+
+    return Boolean(data);
+}
+
+function isOtpUserMissingError(errorMessage) {
+    const msg = String(errorMessage || "").toLowerCase();
+    return msg.includes("signups not allowed for otp")
+        || msg.includes("user not found")
+        || msg.includes("not found");
+}
+
+async function isAlreadyRegisteredInAuth(email) {
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false }
+    });
+
+    if (!error) {
+        return true;
+    }
+
+    if (isOtpUserMissingError(error.message)) {
+        return false;
+    }
+
+    throw new Error("Registrierungsstatus im Login konnte nicht geprüft werden: " + error.message);
+}
+
+async function isAlreadyRegistered(email) {
+    const existsInStudents = await isAlreadyRegisteredInStudents(email);
+    if (existsInStudents) {
+        return true;
+    }
+
+    return isAlreadyRegisteredInAuth(email);
+}
+
+async function registerAndRedirect() {
     const usernameElement = document.getElementById("signup-username");
     const passwordElement = document.getElementById("signup-password");
     const confirmElement = document.getElementById("signup-password-confirm");
+    const signupButton = document.getElementById("signup-button");
 
     if (!usernameElement || !passwordElement || !confirmElement) {
         setMessage("Registrierungsformular konnte nicht geladen werden.", true);
@@ -66,17 +116,39 @@ function registerAndRedirect() {
 
     const email = username + "@hs-esslingen.de";
 
-    const pendingRegistration = {
-        username,
-        email,
-        password,
-        createdAt: Date.now()
-    };
+    if (signupButton) {
+        signupButton.disabled = true;
+    }
 
-    sessionStorage.setItem("pending-registration", JSON.stringify(pendingRegistration));
-    setMessage("Weiterleitung zur Identifizierung...", false);
+    try {
+        const alreadyRegistered = await isAlreadyRegistered(email);
 
-    window.location.href = "Identifizierung.html?username=" + encodeURIComponent(username);
+        if (alreadyRegistered) {
+            sessionStorage.removeItem("pending-registration");
+            setMessage("Diese E-Mail ist bereits registriert. Weiterleitung zum Login...", true);
+            setTimeout(function () {
+                window.location.href = "Login.html?username=" + encodeURIComponent(username);
+            }, 1400);
+            return;
+        }
+
+        const pendingRegistration = {
+            username,
+            email,
+            password,
+            createdAt: Date.now()
+        };
+
+        sessionStorage.setItem("pending-registration", JSON.stringify(pendingRegistration));
+        setMessage("Weiterleitung zur Identifizierung...", false);
+        window.location.href = "Identifizierung.html?username=" + encodeURIComponent(username);
+    } catch (error) {
+        setMessage(error?.message || "Registrierung konnte nicht gestartet werden.", true);
+    } finally {
+        if (signupButton) {
+            signupButton.disabled = false;
+        }
+    }
 }
 
 document.addEventListener("DOMContentLoaded", function () {

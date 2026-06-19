@@ -215,39 +215,84 @@ body {
 
 .speiseplan-rechts {
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
+    gap: 8px;
 }
 
-.vorbestell-btn {
-    display: inline-block;
-    background: linear-gradient(135deg, #6a5af9, #8b7bff);
-    border: none;
-    padding: 10px 18px;
+.mengensteuerung {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #eef6ff;
+    border: 1px solid #cfe2fa;
+    padding: 8px 10px;
     border-radius: 10px;
-    color: white;
-    font-size: 15px;
-    font-weight: 600;
+}
+
+.mengen-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    background: #6655cc;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 22px;
     cursor: pointer;
-    margin-top: 12px;
-    text-decoration: none;
 }
 
-.vorbestell-btn:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: scale(1.05);
-}
-
-.vorbestell-btn:disabled {
-    background: #c0bce8;
+.mengen-btn:disabled {
+    background: #cccccc;
+    color: #ffffff;
     cursor: not-allowed;
-    opacity: 0.6;
+}
+
+.mengen-btn:hover:not(:disabled) {
+    background: #5b4cc2;
+}
+
+.mengen-anzahl {
+    min-width: 22px;
+    text-align: center;
+    font-weight: 700;
+    color: #0d2b52;
+}
+
+.kategorie-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mengen-hinweis {
+    margin: 0;
+    font-size: 12px;
+    color: #5f7694;
+    text-align: center;
+    max-width: 130px;
 }
 
 .preise {
     font-size: 14px;
     color: #555;
-    line-height: 1.6;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.preis-zeile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.preis-text {
+    flex: 1;
 }
 
 .gericht-bild {
@@ -269,29 +314,89 @@ body {
     margin-bottom: 10px;
 }
 
+.ernaehrung-badge {
+    display: inline-block;
+    width: fit-content;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-transform: lowercase;
+}
+
+.ernaehrung-vegan {
+    background: #2a7a2a;
+    color: #ffffff;
+}
+
+.ernaehrung-vegetarisch {
+    background: #5a8a2a;
+    color: #ffffff;
+}
+
+.ernaehrung-nicht-vegetarisch {
+    background: #888888;
+    color: #ffffff;
+}
+
 .bestellfenster {
-    background-color: #ffffff;
-    padding: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+    padding: 22px;
     position: fixed;
-    width: 350px;
-    height: 100vb;
+    width: clamp(300px, 24vw, 370px);
     top: 150px;
-    right: 10px;
+    bottom: 48px;
+    right: 16px;
     font-weight: 600;
-    border-radius: 18px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 14px 30px rgba(13, 43, 82, 0.14);
+    border: 1px solid #dce8f6;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bestellfenster-titel {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    color: #0d2b52;
+    letter-spacing: 0.2px;
 }
 
 .bestellfensterfenster {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 1 1 auto;
+    min-height: 180px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .bestell-zeile {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #dce8f6;
+}
+
+.gerichts-info {
+    width: 100%;
+}
+
+.gerichtnamezeile {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: start;
+    font-size: 14px;
+    line-height: 1.3;
 }
 
 .preis {
@@ -302,38 +407,146 @@ body {
 
 .bestell-zeile.gesamt {
     font-weight: 700;
-    border-top: 1px solid #ccc;
-    padding-top: 8px;
+    border-top: 1px solid #c8d8eb;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 10px 0 0;
 }
 
 .remove-button {
-    border-radius: 4px;
-    background-color: rgb(229, 226, 226);
-    border: 1px solid;
-    color: #000;
-    font-size: 14px;
+    border-radius: 999px;
+    background-color: #fff0f0;
+    border: 1px solid #f5b2b2;
+    color: #9f1f1f;
+    font-size: 13px;
+    font-weight: 700;
     cursor: pointer;
-    padding: 0 4px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
 }
 
+.remove-button:hover {
+    background: #ffdede;
+}
 
 .vorbestellung-button {
-    position: absolute;
-    right: 20px;
+    margin-top: 2px;
+    width: 100%;
     font-weight: 700;
-    height: 20px;
-    font-size: 14px;
-    background-color: rgb(229, 226, 226);
-    border: 1px solid #767676;
-    border-radius: 8px;
+    min-height: 42px;
+    font-size: 15px;
+    background: linear-gradient(90deg, #159bd7, #1fb286);
+    border: none;
+    border-radius: 10px;
     text-decoration: none;
     align-items: center;
     display: flex;
     justify-content: center;
-    color: #000;
-    padding: 5px 12px;
+    color: #fff;
+    padding: 8px 14px;
     cursor: pointer;
+}
 
+.vorbestellung-button:hover {
+    filter: brightness(0.97);
+    transform: translateY(-1px);
+}
+
+.bestell-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 26, 54, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 2000;
+}
+
+.bestell-confirm-overlay.is-visible {
+    display: flex;
+}
+
+.bestell-confirm-modal {
+    width: min(560px, 100%);
+    max-height: 85vh;
+    overflow: auto;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(9, 25, 51, 0.3);
+    border-top: 6px solid #159bd7;
+    padding: 22px;
+}
+
+.bestell-confirm-modal h2 {
+    margin: 0 0 10px;
+    color: #0d2b52;
+}
+
+.bestell-confirm-subtitle {
+    margin: 0 0 14px;
+    color: #2c4d74;
+}
+
+.bestell-confirm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.bestell-confirm-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #dbe7f3;
+    border-radius: 10px;
+    background: #f8fbff;
+    font-size: 14px;
+}
+
+.bestell-confirm-item strong {
+    display: block;
+    color: #0d2b52;
+}
+
+.bestell-confirm-item span {
+    color: #516b87;
+}
+
+.bestell-confirm-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #d6e3f1;
+    padding-top: 10px;
+    margin-top: 2px;
+}
+
+.bestell-confirm-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.bestell-confirm-close {
+    background: linear-gradient(90deg, #159bd7, #1fb286);
+    border: none;
+    color: #fff;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.bestell-confirm-close:hover {
+    filter: brightness(0.96);
 }
 
 /* FOOTER */
