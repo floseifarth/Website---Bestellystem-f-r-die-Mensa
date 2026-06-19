@@ -12,6 +12,7 @@ function buildTargetUrl(req) {
     const targetUrl = new URL(directSupabaseUrl);
 
     targetUrl.pathname = normalizedPath ? `/${normalizedPath}` : "/";
+    incomingUrl.searchParams.delete("path");
     targetUrl.search = incomingUrl.search;
 
     return targetUrl;
