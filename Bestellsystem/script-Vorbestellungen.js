@@ -3,6 +3,10 @@ import { supabase } from "./supabaseClient.js";
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MAX_GERICHTE_PRO_TAG = 3;
 const TEST_BESTELLUNG_HEUTE_AKTIV = true;
+const EMAILJS_API_URL = "https://api.emailjs.com/api/v1.0/email/send";
+const EMAILJS_SERVICE_ID = "service_46zmvnc";
+const EMAILJS_TEMPLATE_ID = "template_ugos18i";
+const EMAILJS_PUBLIC_KEY = "83oOfEchy894C2Az9";
 
 function ermittleBestellzeitraum() {
     if (TEST_BESTELLUNG_HEUTE_AKTIV) {
@@ -116,15 +120,36 @@ async function ermittleVorname(user) {
 
     const { data, error } = await supabase
         .from("students")
-        .select("Vorname")
+        .select("*")
         .ilike("email", email)
         .maybeSingle();
 
-    if (!error && data?.Vorname) {
-        return data.Vorname;
+    const vorname = data?.vorname || data?.Vorname;
+    if (!error && vorname) {
+        return vorname;
     }
 
     return email.split("@")[0];
+}
+
+async function ermittleNutzerEmail(user) {
+    const authEmail = String(user?.email || "").trim();
+    const userId = String(user?.id || "").trim();
+
+    if (userId) {
+        const { data, error } = await supabase
+            .from("students")
+            .select("email")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+        const studentenEmail = String(data?.email || "").trim();
+        if (!error && studentenEmail) {
+            return studentenEmail;
+        }
+    }
+
+    return authEmail;
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
@@ -404,7 +429,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     // Speichern der Daten in der Supabase-Tabelle "Bestellungen".
-    async function speichereBestellungen(orderItems) {
+    async function speichereBestellungen(orderItems, nutzerEmail) {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         const user = sessionData?.session?.user;
 
@@ -414,7 +439,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         const rows = orderItems.map(item => ({
             auth_user_id: user.id,
-            email: user.email || "",
+            email: nutzerEmail || user.email || "",
             gericht_name: item.name,
             bestell_datum: item.bestellIsoDate,
             kategorie: item.category,
@@ -442,7 +467,12 @@ document.addEventListener("DOMContentLoaded", async function () {
             throw new Error(error.message);
         }
     }
-    async function sendeBestellbestaetigung(user, orderItems) {
+    async function sendeBestellbestaetigung(user, orderItems, nutzerEmail) {
+        const empfaengerEmail = String(nutzerEmail || user?.email || "").trim();
+        if (!empfaengerEmail) {
+            throw new Error("Keine gültige Empfänger-E-Mail gefunden.");
+        }
+
         const orderSummary = orderItems
             .map(item => `1x ${item.name} | ${item.date} | ${item.category} | ${item.price}`)
             .join("\n");
@@ -450,17 +480,31 @@ document.addEventListener("DOMContentLoaded", async function () {
         const totalPrice = orderItems
             .reduce((sum, item) => sum + parsePrice(item.price), 0);
 
-        await emailjs.send(
-            "service_46zmvnc",
-            "template_ugos18i",
-            {
-                to_email: user.email,
-                name: user.user_metadata?.full_name || user.email,
+        const body = {
+            service_id: EMAILJS_SERVICE_ID,
+            template_id: EMAILJS_TEMPLATE_ID,
+            user_id: EMAILJS_PUBLIC_KEY,
+            template_params: {
+                to_email: empfaengerEmail,
+                name: user.user_metadata?.full_name || empfaengerEmail,
                 gericht: orderSummary,
                 preis: formatPrice(totalPrice),
                 datum: orderItems[0]?.date || "-"
             }
-        );
+        };
+
+        const response = await fetch(EMAILJS_API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Bestätigungsmail konnte nicht gesendet werden. ${text}`);
+        }
     }
     // Beim Abschicken: in der DB speichern und erst dann weiterleiten.
     const abschickenButton = document.querySelector(".vorbestellung-button");
@@ -474,8 +518,15 @@ document.addEventListener("DOMContentLoaded", async function () {
             }
 
             try {
-                await speichereBestellungen(orderItems);
-                await sendeBestellbestaetigung(user, orderItems);
+                const nutzerEmail = await ermittleNutzerEmail(user);
+                await speichereBestellungen(orderItems, nutzerEmail);
+                try {
+                    await sendeBestellbestaetigung(user, orderItems, nutzerEmail);
+                } catch (mailError) {
+                    alert("Bestellung gespeichert, aber Bestätigungsmail konnte nicht gesendet werden. " + (mailError?.message || ""));
+                    window.location.href = "Bestätigungsseite.html";
+                    return;
+                }
                 window.location.href = "Bestätigungsseite.html";
             } catch (error) {
                 alert("Bestellungen konnten nicht gespeichert werden: " + error.message);

@@ -136,12 +136,13 @@ async function ermittleVorname(user) {
 
     const { data, error } = await supabase
         .from("students")
-        .select("Vorname")
+        .select("*")
         .ilike("email", email)
         .maybeSingle();
 
-    if (!error && data?.Vorname) {
-        return data.Vorname;
+    const vorname = data?.vorname || data?.Vorname;
+    if (!error && vorname) {
+        return vorname;
     }
 
     return email.split("@")[0];

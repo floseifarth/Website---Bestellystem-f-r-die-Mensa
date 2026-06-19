@@ -385,14 +385,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
-    currentEmail = (user.email || "").trim();
+    const authEmail = (user.email || "").trim();
+    currentEmail = authEmail;
     currentAuthUserId = user.id || null;
+
+    if (currentAuthUserId) {
+        const { data: studentData, error: studentError } = await supabase
+            .from("students")
+            .select("email")
+            .eq("user_id", currentAuthUserId)
+            .maybeSingle();
+
+        const studentEmail = String(studentData?.email || "").trim();
+        if (!studentError && studentEmail) {
+            currentEmail = studentEmail;
+        }
+    }
 
     // Anzeigename
     const nameEl = document.getElementById("user-display-name");
     if (nameEl) {
         const meta = (user.user_metadata?.full_name || "").trim();
-        nameEl.textContent = meta ? meta.split(/\s+/)[0] : currentEmail.split("@")[0];
+        const fallbackName = (authEmail || currentEmail || "Gast").split("@")[0] || "Gast";
+        nameEl.textContent = meta ? meta.split(/\s+/)[0] : fallbackName;
     }
 
     // Abo laden
