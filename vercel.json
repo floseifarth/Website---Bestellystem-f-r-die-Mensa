@@ -1,4 +1,10 @@
 {
+    "rewrites": [
+        {
+            "source": "/api/supabase/:path*",
+            "destination": "/api/supabase?path=:path*"
+        }
+    ],
     "redirects": [
         {
             "source": "/",
