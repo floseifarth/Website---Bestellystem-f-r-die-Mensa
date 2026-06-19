@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient.js";
 
 let currentPreviewUrl = null;
 let selectedFileDataUrl = "";
+const OCR_FUNCTION_NAMES = ["read-student-card", "read-student-card-websitetest"];
 
 async function readFileAsDataUrl(file) {
     return await new Promise((resolve, reject) => {
@@ -234,17 +235,32 @@ async function invokeReadStudentCard(file) {
         ? base64DataUrl.split(",")[1]
         : base64DataUrl;
 
-    const response = await supabase.functions.invoke("read-student-card-websitetest", {
-        body: {
-            imageBase64
-        }
-    });
+    let lastInvokeError = null;
 
-    if (response.error) {
-        throw new Error(response.error.message || "Edge Function konnte nicht ausgeführt werden.");
+    for (const functionName of OCR_FUNCTION_NAMES) {
+        const response = await supabase.functions.invoke(functionName, {
+            body: {
+                imageBase64
+            }
+        });
+
+        if (response.error) {
+            lastInvokeError = response.error;
+            // Fallback auf den alten Namen nur dann, wenn die Function nicht existiert.
+            if (/404|not found|does not exist/i.test(String(response.error.message || ""))) {
+                continue;
+            }
+            throw new Error(response.error.message || "Edge Function konnte nicht ausgeführt werden.");
+        }
+
+        if (response.data?.error) {
+            throw new Error(String(response.data.error));
+        }
+
+        return response.data;
     }
 
-    return response.data;
+    throw new Error(lastInvokeError?.message || "Keine passende OCR-Edge-Function gefunden.");
 }
 
 function applyExtractedFields(fields) {
