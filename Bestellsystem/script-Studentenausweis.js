@@ -2,7 +2,7 @@ import { supabase } from "./supabaseClient.js";
 
 let currentPreviewUrl = null;
 let selectedFileDataUrl = "";
-const OCR_FUNCTION_NAMES = ["read-student-card", "read-student-card-websitetest"];
+const OCR_FUNCTION_NAME = "read-student-card";
 
 async function readFileAsDataUrl(file) {
     return await new Promise((resolve, reject) => {
@@ -11,6 +11,41 @@ async function readFileAsDataUrl(file) {
         reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
         reader.readAsDataURL(file);
     });
+}
+
+async function loadImageFromObjectUrl(objectUrl) {
+    return await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Bildformat wird im Browser nicht unterstützt."));
+        image.src = objectUrl;
+    });
+}
+
+async function convertImageFileToJpegDataUrl(file) {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+        const image = await loadImageFromObjectUrl(objectUrl);
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth || image.width;
+        canvas.height = image.naturalHeight || image.height;
+
+        const context = canvas.getContext("2d");
+        if (!context) {
+            throw new Error("Bildkonvertierung konnte nicht gestartet werden.");
+        }
+
+        context.drawImage(image, 0, 0);
+        return canvas.toDataURL("image/jpeg", 0.92);
+    } finally {
+        URL.revokeObjectURL(objectUrl);
+    }
+}
+
+function isHeicLikeFile(file) {
+    const mime = String(file?.type || "").toLowerCase();
+    const name = String(file?.name || "").toLowerCase();
+    return mime.includes("heic") || mime.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
 }
 
 function setMessage(text, isError = false) {
@@ -229,38 +264,44 @@ function mapOcrResultToFields(rawData) {
 }
 
 async function invokeReadStudentCard(file) {
-    const base64DataUrl = await readFileAsDataUrl(file);
+    let base64DataUrl = await readFileAsDataUrl(file);
+
+    if (isHeicLikeFile(file)) {
+        try {
+            // Viele OCR-Pipelines verarbeiten HEIC nicht direkt; daher vor dem Upload in JPEG konvertieren.
+            base64DataUrl = await convertImageFileToJpegDataUrl(file);
+        } catch {
+            throw new Error("HEIC konnte nicht verarbeitet werden. Bitte als JPG oder PNG exportieren und erneut hochladen.");
+        }
+    }
 
     const imageBase64 = base64DataUrl.includes(",")
         ? base64DataUrl.split(",")[1]
         : base64DataUrl;
 
-    let lastInvokeError = null;
-
-    for (const functionName of OCR_FUNCTION_NAMES) {
-        const response = await supabase.functions.invoke(functionName, {
-            body: {
-                imageBase64
-            }
-        });
-
-        if (response.error) {
-            lastInvokeError = response.error;
-            // Fallback auf den alten Namen nur dann, wenn die Function nicht existiert.
-            if (/404|not found|does not exist/i.test(String(response.error.message || ""))) {
-                continue;
-            }
-            throw new Error(response.error.message || "Edge Function konnte nicht ausgeführt werden.");
+    const response = await supabase.functions.invoke(OCR_FUNCTION_NAME, {
+        body: {
+            imageBase64
         }
+    });
 
-        if (response.data?.error) {
-            throw new Error(String(response.data.error));
+    if (response.error) {
+        const errorText = String(response.error.message || "Unbekannter Fehler");
+        if (/non-2xx|vision|google|image/i.test(errorText)) {
+            throw new Error("Ausweis konnte nicht gelesen werden. Bitte ein klares JPG/PNG mit gut sichtbarer Matrikelnummer verwenden.");
         }
-
-        return response.data;
+        throw new Error(errorText);
     }
 
-    throw new Error(lastInvokeError?.message || "Keine passende OCR-Edge-Function gefunden.");
+    if (response.data?.error) {
+        const errorText = String(response.data.error);
+        if (/vision|google|image/i.test(errorText)) {
+            throw new Error("Ausweis konnte nicht gelesen werden. Bitte ein klares JPG/PNG mit gut sichtbarer Matrikelnummer verwenden.");
+        }
+        throw new Error(errorText);
+    }
+
+    return response.data;
 }
 
 function applyExtractedFields(fields) {
