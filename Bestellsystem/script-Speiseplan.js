@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { loadCurrentUserContext } from "./userContext.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
@@ -123,31 +124,6 @@ function toIsoDate(date) {
     return `${year}-${month}-${day}`;
 }
 
-async function ermittleVorname(user) {
-    const fullName = (user.user_metadata?.full_name || "").trim();
-    if (fullName) {
-        return fullName.split(/\s+/)[0];
-    }
-
-    const email = (user.email || "").trim();
-    if (!email) {
-        return "Gast";
-    }
-
-    const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .ilike("email", email)
-        .maybeSingle();
-
-    const vorname = data?.vorname || data?.Vorname;
-    if (!error && vorname) {
-        return vorname;
-    }
-
-    return email.split("@")[0];
-}
-
 async function ladeGerichte() {
     const vorbestellungsZaehler = ermittleVorbestellungsZaehler();
     const startDate = new Date();
@@ -234,8 +210,8 @@ async function ladeGerichte() {
 document.addEventListener("DOMContentLoaded", async function () {
 
     // Aktuelle Supabase-Session abrufen (gespeichert nach dem Login).
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
+    const userContext = await loadCurrentUserContext();
+    const user = userContext.user;
 
     // Kein eingeloggter User? Zurueck zur Anmeldeseite.
     if (!user) {
@@ -244,13 +220,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     // Vorname aus Auth-Metadaten oder aus students ermitteln.
-    const displayName = await ermittleVorname(user);
-
-
     // Namen rechts oben im Profil-Bereich einsetzen.
     const nameElement = document.getElementById("user-display-name");
     if (nameElement) {
-        nameElement.textContent = displayName;
+        nameElement.textContent = userContext.displayName;
     }
     aktualisiereBestellstatusHeader(user.id);
     // Speiseplan aus Supabase laden.

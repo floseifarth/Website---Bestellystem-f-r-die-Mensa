@@ -41,7 +41,6 @@ function baueLoginEmailAusEingabe(rawInput) {
     if (!cleaned) {
         return "";
     }
-    // Erlaubt sowohl RZ-Kennung als auch bereits vollstaendige E-Mail.
     if (cleaned.includes("@")) {
         return cleaned;
     }

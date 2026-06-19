@@ -1,29 +1,5 @@
 import { supabase } from "./supabaseClient.js";
-
-async function ermittleVorname(user) {
-    const fullName = (user.user_metadata?.full_name || "").trim();
-    if (fullName) {
-        return fullName.split(/\s+/)[0];
-    }
-
-    const email = (user.email || "").trim();
-    if (!email) {
-        return "Gast";
-    }
-
-    const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .ilike("email", email)
-        .maybeSingle();
-
-    const vorname = data?.vorname || data?.Vorname;
-    if (!error && vorname) {
-        return vorname;
-    }
-
-    return email.split("@")[0];
-}
+import { loadCurrentUserContext, resolveStudentProfile } from "./userContext.js";
 async function aktualisiereBestellstatusHeader(userId) {
     const badge = document.getElementById("bestellstatus-badge");
     if (!badge) return;
@@ -155,44 +131,7 @@ function renderProfile(profileData, user) {
 }
 
 async function ladeProfildaten(user) {
-    const email = (user.email || "").trim();
-    let profileData = null;
-    let lastError = null;
-
-    // Primaere Suche: ueber die hinterlegte E-Mail.
-    if (email) {
-        const { data, error } = await supabase
-            .from("students")
-            .select("*")
-            .ilike("email", email)
-            .maybeSingle();
-
-        if (error) {
-            lastError = error;
-        } else {
-            profileData = data;
-        }
-    }
-
-    // Fallback: falls in der Tabelle ein Auth-User-ID Mapping existiert.
-    if (!profileData) {
-        const { data, error } = await supabase
-            .from("students")
-            .select("*")
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-        if (error) {
-            lastError = error;
-        } else {
-            profileData = data;
-        }
-    }
-
-    if (lastError && !profileData) {
-        console.error("Fehler beim Laden der Profildaten:", lastError);
-    }
-
+    const profileData = await resolveStudentProfile(user);
     renderProfile(profileData, user);
 }
 
@@ -201,8 +140,8 @@ async function ladeProfildaten(user) {
 document.addEventListener("DOMContentLoaded", async function () {
 
     // Aktuelle Supabase-Session abrufen (gespeichert nach dem Login).
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
+    const userContext = await loadCurrentUserContext();
+    const user = userContext.user;
 
     // Kein eingeloggter User? Zurueck zur Anmeldeseite.
     if (!user) {
@@ -211,12 +150,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     // Vorname aus Auth-Metadaten oder aus students ermitteln.
-    const displayName = await ermittleVorname(user);
-
     // Namen rechts oben im Profil-Bereich einsetzen.
     const nameElement = document.getElementById("user-display-name");
     if (nameElement) {
-        nameElement.textContent = displayName;
+        nameElement.textContent = userContext.displayName;
     }
     aktualisiereBestellstatusHeader(user.id);
     const logoutButton = document.getElementById("btn-abmelden");

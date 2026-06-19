@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { loadCurrentUserContext } from "./userContext.js";
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 
@@ -377,8 +378,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (datumEl) datumEl.textContent = wochentag + ", " + heute.toLocaleDateString("de-DE");
 
     // Session prüfen
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
+    const userContext = await loadCurrentUserContext();
+    const user = userContext.user;
 
     if (!user) {
         window.location.href = "index.html";
@@ -386,28 +387,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const authEmail = (user.email || "").trim();
-    currentEmail = authEmail;
+    currentEmail = userContext.email || authEmail;
     currentAuthUserId = user.id || null;
-
-    if (currentAuthUserId) {
-        const { data: studentData, error: studentError } = await supabase
-            .from("students")
-            .select("email")
-            .eq("user_id", currentAuthUserId)
-            .maybeSingle();
-
-        const studentEmail = String(studentData?.email || "").trim();
-        if (!studentError && studentEmail) {
-            currentEmail = studentEmail;
-        }
-    }
 
     // Anzeigename
     const nameEl = document.getElementById("user-display-name");
     if (nameEl) {
-        const meta = (user.user_metadata?.full_name || "").trim();
-        const fallbackName = (authEmail || currentEmail || "Gast").split("@")[0] || "Gast";
-        nameEl.textContent = meta ? meta.split(/\s+/)[0] : fallbackName;
+        nameEl.textContent = userContext.displayName;
     }
 
     // Abo laden

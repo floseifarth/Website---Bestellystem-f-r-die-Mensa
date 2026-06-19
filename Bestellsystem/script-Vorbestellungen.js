@@ -1,12 +1,9 @@
 import { supabase } from "./supabaseClient.js";
+import { loadCurrentUserContext } from "./userContext.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MAX_GERICHTE_PRO_TAG = 3;
 const TEST_BESTELLUNG_HEUTE_AKTIV = true;
-const EMAILJS_API_URL = "https://api.emailjs.com/api/v1.0/email/send";
-const EMAILJS_SERVICE_ID = "service_46zmvnc";
-const EMAILJS_TEMPLATE_ID = "template_ugos18i";
-const EMAILJS_PUBLIC_KEY = "83oOfEchy894C2Az9";
 
 function ermittleBestellzeitraum() {
     if (TEST_BESTELLUNG_HEUTE_AKTIV) {
@@ -107,51 +104,6 @@ function formatiereAnzeigeDatum(date) {
     });
 }
 
-async function ermittleVorname(user) {
-    const fullName = (user.user_metadata?.full_name || "").trim();
-    if (fullName) {
-        return fullName.split(/\s+/)[0];
-    }
-
-    const email = (user.email || "").trim();
-    if (!email) {
-        return "Gast";
-    }
-
-    const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .ilike("email", email)
-        .maybeSingle();
-
-    const vorname = data?.vorname || data?.Vorname;
-    if (!error && vorname) {
-        return vorname;
-    }
-
-    return email.split("@")[0];
-}
-
-async function ermittleNutzerEmail(user) {
-    const authEmail = String(user?.email || "").trim();
-    const userId = String(user?.id || "").trim();
-
-    if (userId) {
-        const { data, error } = await supabase
-            .from("students")
-            .select("email")
-            .eq("user_id", userId)
-            .maybeSingle();
-
-        const studentenEmail = String(data?.email || "").trim();
-        if (!error && studentenEmail) {
-            return studentenEmail;
-        }
-    }
-
-    return authEmail;
-}
-
 document.addEventListener("DOMContentLoaded", async function () {
     const heute = new Date();
     const wochentag = WOCHENTAGE[heute.getDay()];
@@ -162,18 +114,17 @@ document.addEventListener("DOMContentLoaded", async function () {
         datumElement.innerText = wochentag + ", " + datum;
     }
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
+    const userContext = await loadCurrentUserContext();
+    const user = userContext.user;
 
     if (!user) {
         window.location.href = "index.html";
         return;
     }
 
-    const displayName = await ermittleVorname(user);
     const nameElement = document.getElementById("user-display-name");
     if (nameElement) {
-        nameElement.textContent = displayName;
+        nameElement.textContent = userContext.displayName;
 
     }
     aktualisiereBestellstatusHeader(user.id);
@@ -480,30 +431,22 @@ document.addEventListener("DOMContentLoaded", async function () {
         const totalPrice = orderItems
             .reduce((sum, item) => sum + parsePrice(item.price), 0);
 
-        const body = {
-            service_id: EMAILJS_SERVICE_ID,
-            template_id: EMAILJS_TEMPLATE_ID,
-            user_id: EMAILJS_PUBLIC_KEY,
-            template_params: {
+        const { data, error } = await supabase.functions.invoke("send-order-email", {
+            body: {
                 to_email: empfaengerEmail,
-                name: user.user_metadata?.full_name || empfaengerEmail,
+                name: user.user_metadata?.full_name || userContext.displayName || empfaengerEmail,
                 gericht: orderSummary,
                 preis: formatPrice(totalPrice),
                 datum: orderItems[0]?.date || "-"
             }
-        };
-
-        const response = await fetch(EMAILJS_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(body)
         });
 
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`Bestätigungsmail konnte nicht gesendet werden. ${text}`);
+        if (error) {
+            throw new Error(`Bestätigungsmail konnte nicht gesendet werden. ${error.message}`);
+        }
+
+        if (data?.success !== true) {
+            throw new Error("Bestätigungsmail konnte nicht gesendet werden.");
         }
     }
     // Beim Abschicken: in der DB speichern und erst dann weiterleiten.
@@ -518,7 +461,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             }
 
             try {
-                const nutzerEmail = await ermittleNutzerEmail(user);
+                const nutzerEmail = userContext.email;
                 await speichereBestellungen(orderItems, nutzerEmail);
                 try {
                     await sendeBestellbestaetigung(user, orderItems, nutzerEmail);

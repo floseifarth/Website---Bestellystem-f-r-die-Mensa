@@ -14,6 +14,11 @@ function setMessage(text, isError) {
     messageElement.style.color = isError ? "#b42318" : "#027a48";
 }
 
+function getUsernameInput() {
+    const input = document.getElementById("reset-username");
+    return input ? input.value : "";
+}
+
 function buildHsEmailFromInput(rawInput) {
     const cleaned = normalizeText(rawInput);
     if (!cleaned) {
@@ -23,11 +28,6 @@ function buildHsEmailFromInput(rawInput) {
         return cleaned;
     }
     return cleaned + "@hs-esslingen.de";
-}
-
-function getUsernameInput() {
-    const input = document.getElementById("reset-username");
-    return input ? input.value : "";
 }
 
 function getCurrentEmail() {
