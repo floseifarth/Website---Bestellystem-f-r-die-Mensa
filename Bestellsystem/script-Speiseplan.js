@@ -124,6 +124,45 @@ function toIsoDate(date) {
     return `${year}-${month}-${day}`;
 }
 
+function normalizeErnaehrungstyp(rawValue) {
+    const text = String(rawValue || "")
+        .trim()
+        .toLowerCase()
+        .replace(/ä/g, "ae")
+        .replace(/ö/g, "oe")
+        .replace(/ü/g, "ue")
+        .replace(/ß/g, "ss");
+
+    if (!text) {
+        return null;
+    }
+    if (text.includes("vegan")) {
+        return "vegan";
+    }
+    if (text.includes("nicht vegetarisch") || text.includes("nicht-vegetarisch") || text.includes("fleisch")) {
+        return null;
+    }
+    if (text.includes("vegetar")) {
+        return "vegetarisch";
+    }
+
+    return null;
+}
+
+function renderErnaehrungsBadge(rawValue) {
+    const normalized = normalizeErnaehrungstyp(rawValue);
+    if (!normalized) {
+        return "";
+    }
+
+    const classMap = {
+        vegan: "ernaehrung-vegan",
+        vegetarisch: "ernaehrung-vegetarisch"
+    };
+
+    return `<span class="ernaehrung-badge ${classMap[normalized]}">${normalized}</span>`;
+}
+
 async function ladeGerichte() {
     const vorbestellungsZaehler = ermittleVorbestellungsZaehler();
     const startDate = new Date();
@@ -183,6 +222,7 @@ async function ladeGerichte() {
                 <p>Tagesangebot</p>
                 <h3>${gericht.Gerichtname}</h3>
                 <p class="allergene">Allergene: ${gericht.Allergene || "keine Angabe"}</p>
+                ${renderErnaehrungsBadge(gericht.ernaehrungstyp || gericht.Ernaehrungstyp || gericht["Ernährungstyp"] || gericht.ernaehrung || null)}
                 <div class="preise">
                     <p>Studierende: <strong>${gericht.PreisStudierende}</strong></p>
                     <p>Bedienstete: <strong>${gericht.PreisBedienstet}</strong></p>

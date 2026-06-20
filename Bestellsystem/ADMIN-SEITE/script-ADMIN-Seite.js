@@ -33,6 +33,7 @@ const zoneCCardGast = document.getElementById("zone-c-card-gast");
 const zoneCCardTotal = document.getElementById("zone-c-card-total");
 const zoneCCardDate = document.querySelector(".zone-c-date");
 const zoneCCardDish = document.querySelector("#zone-c-result .zone-c-card h3");
+const zoneCCardErnaehrung = document.getElementById("zone-c-card-ernaehrung");
 
 const countStudHeute = document.getElementById("count-stud-heute");
 const countBedHeute = document.getElementById("count-bed-heute");
@@ -42,6 +43,7 @@ const countTotalHeute = document.getElementById("count-total-heute");
 
 const heutigesGerichtBild = document.getElementById("heutiges-gericht-bild");
 const heutigesGerichtName = document.getElementById("heutiges-gericht-name");
+const heutigesErnaehrungLabel = document.getElementById("heutiges-ernaehrung-label");
 const heutigesPreisStud = document.getElementById("heutiges-preis-stud");
 const heutigesPreisBed = document.getElementById("heutiges-preis-bed");
 const heutigesPreisGast = document.getElementById("heutiges-preis-gast");
@@ -186,6 +188,59 @@ function toEuroText(value) {
         return text;
     }
     return `${text} EUR`;
+}
+
+function normalizeErnaehrungstyp(rawValue) {
+    const text = String(rawValue || "")
+        .trim()
+        .toLowerCase()
+        .replace(/ä/g, "ae")
+        .replace(/ö/g, "oe")
+        .replace(/ü/g, "ue")
+        .replace(/ß/g, "ss");
+
+    if (!text) {
+        return null;
+    }
+    if (text.includes("vegan")) {
+        return "vegan";
+    }
+    if (text.includes("nicht vegetarisch") || text.includes("nicht-vegetarisch") || text.includes("fleisch")) {
+        return null;
+    }
+    if (text.includes("vegetar")) {
+        return "vegetarisch";
+    }
+
+    return null;
+}
+
+function renderErnaehrungsBadgeHtml(rawValue) {
+    const normalized = normalizeErnaehrungstyp(rawValue);
+    if (!normalized) {
+        return "";
+    }
+
+    const className = normalized === "vegan" ? "ernaehrung-vegan" : "ernaehrung-vegetarisch";
+    return `<span class="ernaehrung-badge-admin ${className}">${normalized}</span>`;
+}
+
+function updateErnaehrungsBadgeElement(element, rawValue) {
+    if (!element) {
+        return;
+    }
+
+    const normalized = normalizeErnaehrungstyp(rawValue);
+    element.classList.remove("ernaehrung-vegan", "ernaehrung-vegetarisch", "is-hidden");
+
+    if (!normalized) {
+        element.textContent = "";
+        element.classList.add("is-hidden");
+        return;
+    }
+
+    element.textContent = normalized;
+    element.classList.add(normalized === "vegan" ? "ernaehrung-vegan" : "ernaehrung-vegetarisch");
 }
 
 function normalizeBestellDatum(rawValue) {
@@ -570,6 +625,7 @@ function renderHeutigesGericht(gericht) {
         if (heutigesPreisBed) heutigesPreisBed.textContent = "-";
         if (heutigesPreisGast) heutigesPreisGast.textContent = "-";
         if (heutigesAllergene) heutigesAllergene.textContent = "-";
+        updateErnaehrungsBadgeElement(heutigesErnaehrungLabel, null);
         return;
     }
 
@@ -578,6 +634,10 @@ function renderHeutigesGericht(gericht) {
     if (heutigesPreisBed) heutigesPreisBed.textContent = toEuroText(gericht.PreisBedienstet);
     if (heutigesPreisGast) heutigesPreisGast.textContent = toEuroText(gericht.PreisGast);
     if (heutigesAllergene) heutigesAllergene.textContent = gericht.Allergene || "keine Angabe";
+    updateErnaehrungsBadgeElement(
+        heutigesErnaehrungLabel,
+        gericht.ernaehrungstyp || gericht.Ernaehrungstyp || gericht["Ernährungstyp"] || gericht.ernaehrung || null
+    );
     if (heutigesGerichtBild) {
         heutigesGerichtBild.src = gericht.image_url || "../img/pasta.jpg";
         heutigesGerichtBild.alt = gericht.Gerichtname || "Heutiges Gericht";
@@ -588,7 +648,7 @@ async function ladeHeutigesGericht() {
     const todayIso = getTodayIso();
     const { data, error } = await supabase
         .from("Speiseplan")
-        .select("Gerichtname, Allergene, PreisStudierende, PreisBedienstet, PreisGast, image_url")
+        .select("*")
         .eq("Ausgabedatum", todayIso)
         .maybeSingle();
 
@@ -653,7 +713,7 @@ async function ladeVorschauNaechste5Tage() {
     const [speiseplanRes, bestellungenRes, freieEssenRes] = await Promise.all([
         supabase
             .from("Speiseplan")
-            .select("Gerichtname, image_url, Ausgabedatum")
+            .select("*")
             .gte("Ausgabedatum", startIso)
             .lte("Ausgabedatum", endIso),
         supabase
@@ -725,6 +785,7 @@ async function ladeVorschauNaechste5Tage() {
             <div>
                 <h4>${item.label}</h4>
                 <p>${gericht?.Gerichtname || "Noch kein Gericht eingetragen"}</p>
+                ${renderErnaehrungsBadgeHtml(gericht?.ernaehrungstyp || gericht?.Ernaehrungstyp || gericht?.["Ernährungstyp"] || gericht?.ernaehrung || null)}
                 <p class="vorschau-total">Bestellungen gesamt: ${total}</p>
                 <p class="vorschau-detail">Stud: ${counts.Studierende || 0} | Bed: ${counts.Bedienstete || 0} | Gast: ${counts.Gaeste || 0} | Frei: ${frei}</p>
             </div>
@@ -778,12 +839,34 @@ function scanRefAusEingabe(rawInput) {
     return null;
 }
 
-function fillScanCardFromRows(rows) {
+async function ladeErnaehrungstypFuerGericht(gerichtName, isoDate) {
+    if (!gerichtName || !isoDate) {
+        return null;
+    }
+
+    const { data, error } = await supabase
+        .from("Speiseplan")
+        .select("*")
+        .eq("Ausgabedatum", isoDate)
+        .eq("Gerichtname", gerichtName)
+        .maybeSingle();
+
+    if (error || !data) {
+        return null;
+    }
+
+    return data.ernaehrungstyp || data.Ernaehrungstyp || data["Ernährungstyp"] || data.ernaehrung || null;
+}
+
+async function fillScanCardFromRows(rows) {
     const counts = countRowsByCategory(rows);
     const dishName = rows[0]?.gericht_name || "Bestellung";
+    const dishDate = normalizeBestellDatum(rows[0]?.bestell_datum);
 
     if (zoneCCardDate) zoneCCardDate.textContent = toGermanDateLabel(new Date());
     if (zoneCCardDish) zoneCCardDish.textContent = dishName;
+    const ernaehrungstyp = await ladeErnaehrungstypFuerGericht(dishName, dishDate);
+    updateErnaehrungsBadgeElement(zoneCCardErnaehrung, ernaehrungstyp);
 
     setCount(zoneCAdjustCountStud, counts.Studierende || 0);
     setCount(zoneCAdjustCountBed, counts.Bedienstete || 0);
@@ -1038,7 +1121,7 @@ if (scanButton) {
             }
 
             showZoneCResult();
-            fillScanCardFromRows(rows);
+            await fillScanCardFromRows(rows);
             if (zoneCStatus) {
                 zoneCStatus.textContent = "Bestellung gefunden";
             }

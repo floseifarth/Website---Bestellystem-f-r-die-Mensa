@@ -3,7 +3,7 @@ import { loadCurrentUserContext } from "./userContext.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MAX_GERICHTE_PRO_TAG = 3;
-const TEST_BESTELLUNG_HEUTE_AKTIV = true;
+const TEST_BESTELLUNG_HEUTE_AKTIV = false;
 const CATEGORY_BY_PRICE_KEY = {
     stud: "Studierende",
     bed: "Bedienstete",
@@ -104,7 +104,7 @@ function normalizeErnaehrungstyp(rawValue) {
         return "vegan";
     }
     if (text.includes("nicht vegetarisch") || text.includes("nicht-vegetarisch") || text.includes("fleisch")) {
-        return "nicht vegetarisch";
+        return null;
     }
     if (text.includes("vegetar")) {
         return "vegetarisch";
@@ -121,8 +121,7 @@ function renderErnaehrungsBadge(rawValue) {
 
     const classMap = {
         vegan: "ernaehrung-vegan",
-        vegetarisch: "ernaehrung-vegetarisch",
-        "nicht vegetarisch": "ernaehrung-nicht-vegetarisch"
+        vegetarisch: "ernaehrung-vegetarisch"
     };
 
     return `<span class="ernaehrung-badge ${classMap[normalized]}">${normalized}</span>`;

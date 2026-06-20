@@ -88,6 +88,45 @@ function toEuroText(priceValue) {
     return String(priceValue);
 }
 
+function normalizeErnaehrungstyp(rawValue) {
+    const text = String(rawValue || "")
+        .trim()
+        .toLowerCase()
+        .replace(/ä/g, "ae")
+        .replace(/ö/g, "oe")
+        .replace(/ü/g, "ue")
+        .replace(/ß/g, "ss");
+
+    if (!text) {
+        return null;
+    }
+    if (text.includes("vegan")) {
+        return "vegan";
+    }
+    if (text.includes("nicht vegetarisch") || text.includes("nicht-vegetarisch") || text.includes("fleisch")) {
+        return null;
+    }
+    if (text.includes("vegetar")) {
+        return "vegetarisch";
+    }
+
+    return null;
+}
+
+function renderErnaehrungsBadge(rawValue) {
+    const normalized = normalizeErnaehrungstyp(rawValue);
+    if (!normalized) {
+        return "";
+    }
+
+    const classMap = {
+        vegan: "ernaehrung-vegan",
+        vegetarisch: "ernaehrung-vegetarisch"
+    };
+
+    return `<span class="ernaehrung-badge ${classMap[normalized]}">${normalized}</span>`;
+}
+
 function toIsoDateFromBestellDatum(bestellDatum) {
     const dateParts = String(bestellDatum || "").split(", ");
     const datumText = dateParts[1] || dateParts[0] || "";
@@ -323,6 +362,45 @@ async function ladeBestellungenAusDb(user, aboKonfiguration) {
     });
 }
 
+async function ladeErnaehrungstypLookup(bestellungen) {
+    const isoDates = Array.from(new Set(
+        (bestellungen || [])
+            .map(function (item) {
+                return item.bestellIsoDate;
+            })
+            .filter(Boolean)
+    ));
+
+    if (isoDates.length === 0) {
+        return {};
+    }
+
+    const { data, error } = await supabase
+        .from("Speiseplan")
+        .select("*")
+        .in("Ausgabedatum", isoDates);
+
+    if (error || !data) {
+        return {};
+    }
+
+    const lookup = {};
+    (data || []).forEach(function (row) {
+        const isoDate = String(row.Ausgabedatum || "").trim();
+        const gerichtname = String(row.Gerichtname || "").trim();
+        if (!isoDate || !gerichtname) {
+            return;
+        }
+
+        const key = `${gerichtname}||${isoDate}`;
+        lookup[key] = normalizeErnaehrungstyp(
+            row.ernaehrungstyp || row.Ernaehrungstyp || row["Ernährungstyp"] || row.ernaehrung || null
+        );
+    });
+
+    return lookup;
+}
+
 
 document.addEventListener("DOMContentLoaded", async function () {
     // Header-Datum initialisieren
@@ -426,6 +504,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
         const aboKonfiguration = await ladeBestellaboKonfiguration(user);
         bestellungen = await ladeBestellungenAusDb(user, aboKonfiguration);
+        const ernaehrungLookup = await ladeErnaehrungstypLookup(bestellungen);
+        bestellungen = bestellungen.map(function (item) {
+            const key = `${String(item.name || "").trim()}||${String(item.bestellIsoDate || "").trim()}`;
+            return {
+                ...item,
+                ernaehrungstyp: ernaehrungLookup[key] || null
+            };
+        });
     } catch (error) {
         alert(error.message || "Bestellungen konnten nicht geladen werden.");
     }
@@ -455,10 +541,13 @@ document.addEventListener("DOMContentLoaded", async function () {
         laufendeBestellungen.forEach(function (item) {
             const key = `${item.date}||${item.name}`;
             if (!gruppen[key]) {
-                gruppen[key] = { ...item, kategorien: [], ids: [], priceByCategory: {} };
+                gruppen[key] = { ...item, kategorien: [], ids: [], priceByCategory: {}, ernaehrungstyp: item.ernaehrungstyp || null };
             }
             if (!gruppen[key].bestellIsoDate && item.bestellIsoDate) {
                 gruppen[key].bestellIsoDate = item.bestellIsoDate;
+            }
+            if (!gruppen[key].ernaehrungstyp && item.ernaehrungstyp) {
+                gruppen[key].ernaehrungstyp = item.ernaehrungstyp;
             }
             if (item.priceByCategory) {
                 Object.assign(gruppen[key].priceByCategory, item.priceByCategory);
@@ -531,6 +620,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                         ${gruppe.name || ''}
                         ${alleAbgeholt ? '<span class="status-badge status-abgeholt">✓ Abgeholt</span>' : ''}
                     </h3>
+                    ${renderErnaehrungsBadge(gruppe.ernaehrungstyp)}
                     <div class="preise">
                         <div class="preise-liste">
                             ${Object.entries(counts).map(function ([label, n]) {
