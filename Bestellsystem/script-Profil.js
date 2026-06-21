@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { loadCurrentUserContext, resolveStudentProfile } from "./userContext.js";
+import { escapeHtml } from "./escapeHtml.js";
 async function aktualisiereBestellstatusHeader(userId) {
     const badge = document.getElementById("bestellstatus-badge");
     if (!badge) return;
@@ -37,15 +38,6 @@ async function aktualisiereBestellstatusHeader(userId) {
         badge.textContent = "Keine aktive Bestellung";
     }
 }
-function escapeHtml(value) {
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
-
 function formatValue(value) {
     if (value === null || value === undefined) return "-";
     const text = String(value).trim();
@@ -130,9 +122,20 @@ function renderProfile(profileData, user) {
     `;
 }
 
-async function ladeProfildaten(user) {
+async function ladeProfildaten(user, initialProfile) {
+    if (initialProfile) {
+        renderProfile(initialProfile, user);
+    }
+
     const profileData = await resolveStudentProfile(user);
-    renderProfile(profileData, user);
+    if (profileData) {
+        renderProfile(profileData, user);
+        return;
+    }
+
+    if (!initialProfile) {
+        renderProfile(null, user);
+    }
 }
 
 
@@ -155,12 +158,25 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (nameElement) {
         nameElement.textContent = userContext.displayName;
     }
-    aktualisiereBestellstatusHeader(user.id);
+
+    if (userContext.profile) {
+        renderProfile(userContext.profile, user);
+    } else {
+        const profileContainer = document.getElementById("profile-container");
+        if (profileContainer) {
+            profileContainer.innerHTML = "<p>Profildaten werden geladen ...</p>";
+        }
+    }
+
     const logoutButton = document.getElementById("btn-abmelden");
     if (logoutButton) {
         logoutButton.addEventListener("click", abmelden);
     }
 
-    await ladeProfildaten(user);
+    ladeProfildaten(user, userContext.profile).catch(function (_error) {
+        if (!userContext.profile) {
+            renderProfile(null, user);
+        }
+    });
 
 });

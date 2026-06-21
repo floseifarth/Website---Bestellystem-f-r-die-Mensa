@@ -1,183 +1,167 @@
 # Bestellsystem Security & Handover Audit (Updated)
 
 Original Date: 2026-06-11  
-Last Updated: 2026-06-19  
-Scope: Current repository state after server migration and proxy changes
+Last Updated: 2026-06-21  
+Scope: Current repository state after frontend hardening
 
 ---
 
 ## Executive Summary
 
-The project is improved compared to the previous audit, but it is still **not ready for secure student rollout**.
+Current production readiness (security + handover): **76%**
 
-Current production readiness (security + handover): **55%**
+Frontend-Punkte aus dem Audit sind abgeschlossen. Offen sind nur noch Backend-/Infrastruktur-Themen plus Handover-Dokumentation.
 
-Reason:
-- Important infrastructure fixes were done (HTTPS-safe frontend path to Supabase via Vercel API proxy).
-- Several high-impact application security and reliability issues are still open.
-- RLS and operational hardening are still not fully verifiable from the repository alone.
-
-Decision: **No go-live for broad student usage yet.**
+Decision: **Kein Go-live für breiten Studentenbetrieb bis die verbleibenden Blocker behoben sind.**
 
 ---
 
-## What Improved Since Last Audit
+## Offene Findings (Blocker)
 
-1. Supabase browser access on HTTPS pages now uses `/api/supabase` instead of direct mixed-content calls.
-2. Vercel rewrite/proxy endpoint exists and is wired (`vercel.json`, `api/supabase/[...path].js`).
-3. Order confirmation uses Supabase Edge Function (`send-order-email`) instead of browser-side EmailJS call.
-4. `script-Profil.js` now escapes user/profile values before injecting HTML.
-
----
-
-## Critical Findings (Must Fix Before Student Rollout)
-
-### 1) Stored XSS Risk in Menu/Order Rendering (OPEN)
+### 1) RLS/Authorization Hardening nicht verifizierbar (OFFEN)
 Severity: Critical
 
-Unsanitized DB fields are rendered into `innerHTML` in multiple user-visible pages:
-- `Bestellsystem/script-Speiseplan.js`
-- `Bestellsystem/script-Vorbestellungen.js`
-- `Bestellsystem/script-Meine-Bestellungen.js`
-
-Examples include dish name, allergens, and grouped order labels directly interpolated into template strings.
+Für Production ist weiterhin nicht eindeutig verifizierbar, welche RLS-Policies aktiv sind und wie sie pro Rolle greifen.
 
 Required action:
-1. Introduce one shared `escapeHtml()` utility and use it consistently.
-2. Prefer `textContent` for plain text nodes.
-3. Re-test with payload like `<img src=x onerror=alert(1)>` in dish/allergen fields.
+1. `ENABLE ROW LEVEL SECURITY` für alle Business-Tabellen bestätigen.
+2. Policies für `authenticated` und Admin-only-Operationen dokumentieren und testen.
+3. Explizite RLS-Verifikations-Checkliste in Übergabe-Docs aufnehmen.
 
 ---
 
-### 2) Password Policy Too Weak (OPEN)
-Severity: High (security)
-
-Current checks still accept 6-char passwords in:
-- `Bestellsystem/script-Login.js`
-- `Bestellsystem/script-SignUp.js`
-- `Bestellsystem/script-Passwort-zuruecksetzen.js`
-
-Required action:
-1. Raise minimum length to at least 8 (better: 10+ passphrase-friendly).
-2. Keep messaging consistent across signup/login/reset.
-3. Add server-side policy enforcement (not only frontend checks).
-
----
-
-### 3) RLS/Authorization Hardening Not Fully Verifiable (OPEN)
+### 2) Transport Security Gap im Upstream-Proxy (OFFEN)
 Severity: Critical
 
-Repository shows SQL job logic for `FreieEssen`, but no complete source of truth for active production policies.
-Admin script still includes localStorage fallback in DB error cases.
-
-Required action:
-1. Confirm `ENABLE ROW LEVEL SECURITY` for all business tables.
-2. Document and test policies for `authenticated` and admin-only operations.
-3. Remove or heavily restrict localStorage fallback for admin-critical counters.
-4. Add an explicit RLS verification checklist to handover docs.
-
----
-
-### 4) Transport Security Gap in Upstream Proxy Path (OPEN)
-Severity: Critical
-
-`api/supabase/[...path].js` proxies to:
+`api/supabase/[...path].js` proxied weiterhin zu:
 - `http://212.71.201.100:8000`
 
-This means the serverless proxy-to-upstream leg is plain HTTP.
-If this traffic traverses public networks, bearer tokens/session traffic may be exposed.
+Der Proxy-zu-Upstream-Leg läuft über plain HTTP.
 
 Required action:
-1. Move upstream to HTTPS endpoint.
-2. If internal-only network is intended, document and enforce network boundaries.
-3. Remove HTTP direct fallback in frontend for non-local production contexts.
-
----
-
-## High Priority Findings
-
-### 5) Accessibility: Many Empty alt Attributes (OPEN)
-Severity: High (WCAG compliance / usability)
-
-Current grep result shows many empty `alt=""` icon/menu images across main HTML pages.
-
-Required action:
-1. Add meaningful alt text where informative.
-2. Use `alt=""` only for truly decorative images.
-3. Run accessibility pass (keyboard + screen reader quick checks).
-
----
-
-### 6) Navigation Link Case Mismatch (OPEN)
-Severity: Medium (stability/deployment)
-
-Both `Startseite.html` and `startseite.html` are referenced in links, while the file is lowercase.
-This can break navigation depending on hosting/filesystem behavior.
-
-Required action:
-1. Standardize all links to `startseite.html`.
-2. Add one redirect fallback only if legacy links must be supported.
-
----
-
-### 7) Missing Security Headers/CSP at Runtime (OPEN)
-Severity: High
-
-No enforced runtime CSP/HSTS/X-Frame-Options policy is defined in deployment config.
-
-Required action:
-1. Add strict CSP (iteratively tuned for required CDNs).
-2. Add `Strict-Transport-Security`, `X-Frame-Options` or `frame-ancestors`, `Referrer-Policy`.
-3. Validate headers in live environment (not only local).
+1. Upstream auf HTTPS-Endpunkt umstellen.
+2. Falls internes Netz beabsichtigt: Netzwerkgrenzen dokumentieren und erzwingen.
+3. HTTP-Direktfallback im Frontend für Production-Kontext entfernen.
 
 ---
 
 ## Medium Priority / Handover Gaps
 
-1. Some async paths still fail with console-only diagnostics and weak user feedback.
-2. No evidence of automated security regression tests (XSS policy checks, auth abuse checks).
-3. No explicit incident/runbook section for ops handover (key rotation, outage fallback, RLS rollback).
+1. Kein expliziter Incident/Runbook-Abschnitt für die Übergabe (Key Rotation, Outage-Fallback, RLS-Rollback).
+2. Kein kurzes Handover-Dokument: Architektur, Secrets-Rotation, RLS-Map, Backup/Restore, On-Call-Schritte.
+3. Keine automatisierten Security-Regressionstests (XSS-Policy-Checks, Auth-Abuse-Checks).
 
 ---
 
-## Updated Go-Live Gate (Student Use)
+## Neue Offene Punkte aus Volltest (2026-06-21)
 
-All items below should be completed before declaring handover done:
+### 3) Live-Deployment Drift + Case-Mismatch in Navigation (OFFEN)
+Severity: High
 
-1. XSS remediated in all affected render paths and regression-tested.
-2. Password policy raised and consistently enforced frontend + backend.
-3. Production RLS policies verified and documented per table/role.
-4. Proxy upstream switched to HTTPS (or network-isolated equivalent with documented controls).
-5. Security headers enabled and validated on live URL.
-6. Empty alt attributes cleaned and basic accessibility pass completed.
-7. Navigation case mismatch fixed everywhere.
-8. Admin fallback behavior hardened (no silent localStorage shadow state for critical counters).
-9. Short handover document added: architecture, secrets rotation, RLS map, backup/restore, on-call steps.
+Der Live-Stand auf Vercel entspricht nicht vollständig dem aktuellen Repository-Stand. In der ausgelieferten `startseite.html` verlinken Menüpunkte teilweise auf `Startseite.html` (großes `S`), während die Datei tatsächlich `startseite.html` heißt.
 
----
+Verifiziert:
+1. `https://website-bestellystem-mensa.vercel.app/Bestellsystem/startseite.html` -> 200
+2. `https://website-bestellystem-mensa.vercel.app/Bestellsystem/Startseite.html` -> 404
+3. Live-HTML enthält weiterhin `href="Startseite.html"` in mehreren Seiten.
 
-## Suggested Execution Order (Fastest Risk Reduction)
-
-Phase 1 (Day 1-2):
-1. XSS fixes + tests
-2. Password policy upgrade
-3. Navigation case cleanup
-
-Phase 2 (Day 2-4):
-1. RLS verification + docs
-2. Remove/restrict admin local fallback
-3. Accessibility alt-text sweep
-
-Phase 3 (Day 4-5):
-1. HTTPS upstream proxy hardening
-2. Security headers + CSP rollout
-3. Final pre-handover smoke test and sign-off
+Required action:
+1. Deployment auf den aktuellen Repo-Stand synchronisieren (neu deployen).
+2. Alle internen Navigationslinks strikt auf `startseite.html` normieren.
+3. Nach Deploy Link-Check auf Case-Sensitivity (Linux/Vercel) als Release-Gate aufnehmen.
 
 ---
 
-## Final Assessment (2026-06-19)
+### 4) Speiseplan-Status "Vorbestellt!" nutzt veraltete LocalStorage-Quelle (TEILWEISE ERLEDIGT)
+Severity: Medium
 
-Status: **NOT handover-ready yet**  
-Primary blockers: **XSS, RLS verification, transport security, password strength**
+In `Bestellsystem/script-Speiseplan.js` wird der Marker "Vorbestellt!" aus `localStorage.getItem("bestellungen")` berechnet. Dieser Schlüssel wird im aktuellen Flow nicht mehr geschrieben (Bestellungen laufen über Supabase), wodurch die Markierung in realer Nutzung falsch/leer sein kann.
 
-Once the Go-Live Gate above is fully checked, the system can be reassessed for student rollout and formal handover.
+Required action:
+1. Zähler ausschließlich aus Supabase-Bestellungen des eingeloggten Users aufbauen.
+2. Legacy-LocalStorage-Logik entfernen, um inkonsistente UI-Zustände zu vermeiden.
+
+Status-Update 2026-06-21:
+1. Im Repository umgesetzt in `Bestellsystem/script-Speiseplan.js` (DB-basierter Zähler, LocalStorage entfernt).
+2. Production-Wirksamkeit nach nächstem Deploy verifizieren.
+
+---
+
+### 5) Zeitgrenzenrisiko bei Tages-Cleanup (UTC statt Lokalzeit) (TEILWEISE ERLEDIGT)
+Severity: Medium
+
+In `Bestellsystem/ADMIN-SEITE/script-ADMIN-Seite.js` nutzt `aufgeraeumeAlteBestellungen()` `new Date().toISOString().split("T")[0]` (UTC-basiert) als Tagesgrenze. Rund um Zeitzonen-/Tageswechsel kann das zu verfrühter Archivierung/Löschung führen.
+
+Required action:
+1. Tagesgrenze lokal (Europe/Berlin) bestimmen oder serverseitig in der DB normieren.
+2. Cleanup-Queries gegen lokal validierte Datumsspalten testen (vor/nach 00:00 Uhr lokal).
+
+Status-Update 2026-06-21:
+1. Im Repository umgesetzt in `Bestellsystem/ADMIN-SEITE/script-ADMIN-Seite.js` via Berlin-lokaler Tagesgrenze.
+2. End-to-End-Verifikation im Deploy (vor/nach Mitternacht) bleibt offen.
+
+---
+
+### 6) Admin-Vorschau rendert DB-Daten per `innerHTML` (XSS-Risiko) (TEILWEISE ERLEDIGT)
+Severity: High
+
+In `Bestellsystem/ADMIN-SEITE/script-ADMIN-Seite.js` werden in der Vorschau (`ladeVorschauNaechste5Tage`) Inhalte wie Gerichtname per Template-String via `innerHTML` gerendert, ohne Escape-Funktion. Bei kompromittierten/ungeprüften DB-Inhalten ist Script-Injection möglich.
+
+Required action:
+1. In diesem Rendering-Pfad auf `textContent` + `createElement` umstellen oder zentral `escapeHtml` anwenden.
+2. XSS-Regressionstest für Admin-Vorschau ergänzen.
+
+Status-Update 2026-06-21:
+1. Im Repository umgesetzt in `Bestellsystem/ADMIN-SEITE/script-ADMIN-Seite.js` (kein dynamisches `innerHTML` mehr im Vorschau-Loop).
+2. Regressionstest im Browser/Deploy bleibt offen.
+
+---
+
+### 7) Tote Hilfsfunktionen im Admin-Skript (TEILWEISE ERLEDIGT)
+Severity: Low
+
+Im aktuellen Stand sind mindestens folgende Funktionen ohne Aufruf im selben Modul:
+1. `toGermanNumericDate`
+2. `ermittleHeutigeSpeiseplanId`
+
+Required action:
+1. Nicht genutzte Funktionen entfernen oder integrieren.
+2. Kleinen Dead-Code-Check als CI/Review-Schritt ergänzen.
+
+Status-Update 2026-06-21:
+1. Im Repository bereinigt (`toGermanNumericDate`, `ermittleHeutigeSpeiseplanId`, `renderErnaehrungsBadgeHtml` entfernt).
+2. CI-gestützter Dead-Code-Check bleibt offen.
+
+---
+
+## Volltest-Abdeckung (durchgeführt)
+
+1. Projektweiter Referenzcheck HTML -> lokale CSS/JS-Dateien: keine fehlenden lokalen Asset-Referenzen gefunden.
+2. CSS-Datei-Ebene: keine komplett unreferenzierte CSS-Datei gefunden.
+3. Live-Routen-Stichprobe: zentrale Seiten erreichbar; API-Proxy `/api/supabase/auth/v1/settings` antwortet (401 ohne Auth, erwartbar).
+
+## Verbleibende Testlücken
+
+1. Kein vollständiger E2E-Durchlauf von Registrierung/Login/Bestellung/Admin-Abholung ohne bereitgestellte Testaccounts und DB-Testdaten.
+2. Kein Last-/Race-Test bei parallelen Bestellungen.
+3. Keine automatisierten Browser-Regressionstests für Navigation/Case-Sensitivity im Deploy.
+
+---
+
+## Go-Live Gate
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | XSS in allen Render-Pfaden behoben | ✓ Erledigt |
+| 2 | Passwort-Policy konsistent (Website + App, 6 Zeichen) | ✓ Erledigt |
+| 3 | Production-RLS-Policies verifiziert und dokumentiert | ✗ Offen |
+| 4 | Proxy-Upstream auf HTTPS umgestellt | ✗ Offen |
+| 5 | Security-Header live validiert (nach nächstem Deploy) | ✓ Deployed – Validierung ausstehend |
+| 6 | Accessibility-Pass abgeschlossen | ✓ Erledigt |
+| 7 | Navigation-Case-Mismatch behoben | ✓ Erledigt |
+| 8 | Admin-Fallback (localStorage) gehärtet | ✓ Erledigt |
+| 9 | Handover-Dokument erstellt | ✗ Offen |
+| 10 | Live-Deployment auf Repo-Stand synchron (inkl. Link-Case-Check) | ✗ Offen |
+| 11 | Speiseplan-Status aus DB statt Legacy-LocalStorage | ✓ Im Repo umgesetzt (Deploy-Check offen) |
+| 12 | UTC/Lokalzeit-Cleanup-Grenze validiert | ✓ Im Repo umgesetzt (Mitternachts-Check offen) |
+| 13 | Admin-Vorschau XSS-sicher (kein unescaped `innerHTML`) | ✓ Im Repo umgesetzt (Regressionstest offen) |

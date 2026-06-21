@@ -55,5 +55,4 @@ document.addEventListener("DOMContentLoaded", async function () {
         nameElement.textContent = userContext.displayName;
 
     }
-    aktualisiereBestellstatusHeader(user.id);
 });

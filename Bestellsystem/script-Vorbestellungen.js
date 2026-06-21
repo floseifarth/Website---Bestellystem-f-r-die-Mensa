@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { loadCurrentUserContext } from "./userContext.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MAX_GERICHTE_PRO_TAG = 3;
@@ -158,6 +159,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         datumElement.innerText = wochentag + ", " + datum;
     }
 
+    // Zeitraum-Hinweis direkt setzen, damit kein sichtbares Nachladen entsteht.
+    ladeGerichtzeitraum();
+
     const userContext = await loadCurrentUserContext();
     const user = userContext.user;
 
@@ -224,8 +228,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 row.className = "bestell-zeile";
                 row.innerHTML = `<div class="gerichts-info">
                     <div class="gerichtnamezeile">
-                        <span>1x ${item.name}<br>${item.date}</span>
-                        <span class="preis">${item.price}</span>
+                        <span>1x ${escapeHtml(item.name)}<br>${item.date}</span>
+                        <span class="preis">${escapeHtml(item.price)}</span>
                         <button class="remove-button" type="button">x</button>
                     </div>
                 </div>`;
@@ -417,15 +421,15 @@ document.addEventListener("DOMContentLoaded", async function () {
                 </div>
 
                 <div class="speiseplan-mitte">
-                    <img src="${dish.image}" class="gericht-bild" alt="${dish.name}">
+                    <img src="${escapeHtml(dish.image)}" class="gericht-bild" alt="${escapeHtml(dish.name)}">
                     <p>Tagesangebot</p>
-                    <h3>${dish.name}</h3>
+                    <h3>${escapeHtml(dish.name)}</h3>
 
-                    <p class="allergene">Allergene: ${dish.allergene}</p>
+                    <p class="allergene">Allergene: ${escapeHtml(dish.allergene)}</p>
                     ${renderErnaehrungsBadge(dish.ernaehrungstyp)}
                     <div class="preise">
                         <div class="preis-zeile" data-key="stud">
-                            <span class="preis-text">Studierende: <strong>${dish.priceStud}</strong></span>
+                            <span class="preis-text">Studierende: <strong>${escapeHtml(dish.priceStud)}</strong></span>
                             <div class="kategorie-stepper" data-key="stud">
                                 <button type="button" class="mengen-btn mengen-minus" data-key="stud">-</button>
                                 <span class="mengen-anzahl" data-key="stud">0</span>
@@ -433,7 +437,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                             </div>
                         </div>
                         <div class="preis-zeile" data-key="bed">
-                            <span class="preis-text">Bedienstete: <strong>${dish.priceBed}</strong></span>
+                            <span class="preis-text">Bedienstete: <strong>${escapeHtml(dish.priceBed)}</strong></span>
                             <div class="kategorie-stepper" data-key="bed">
                                 <button type="button" class="mengen-btn mengen-minus" data-key="bed">-</button>
                                 <span class="mengen-anzahl" data-key="bed">0</span>
@@ -441,7 +445,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                             </div>
                         </div>
                         <div class="preis-zeile" data-key="guest">
-                            <span class="preis-text">Gäste: <strong>${dish.priceGuest}</strong></span>
+                            <span class="preis-text">Gäste: <strong>${escapeHtml(dish.priceGuest)}</strong></span>
                             <div class="kategorie-stepper" data-key="guest">
                                 <button type="button" class="mengen-btn mengen-minus" data-key="guest">-</button>
                                 <span class="mengen-anzahl" data-key="guest">0</span>
@@ -603,15 +607,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (data?.success !== true) {
             throw new Error("Bestätigungsmail konnte nicht gesendet werden.");
         }
-    }
-
-    function escapeHtml(value) {
-        return String(value || "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\"/g, "&quot;")
-            .replace(/'/g, "&#39;");
     }
 
     function zeigeBestellPopup(gespeicherteBestellungen, mailHinweis) {

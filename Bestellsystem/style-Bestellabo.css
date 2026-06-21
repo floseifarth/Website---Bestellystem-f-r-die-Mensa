@@ -49,6 +49,30 @@ body {
     display: block;
 }
 
+.bestellstatus-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.bestellstatus-badge.badge-vorbestellt {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.bestellstatus-badge.badge-essensvergabe {
+    background: #ffedd5;
+    color: #9a3412;
+}
+
+.bestellstatus-badge.badge-keine {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 /* DATUM RECHTS */
 .datum {
     display: flex;

@@ -1,7 +1,6 @@
 import { supabase } from "../supabaseClient.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-const STORAGE_FREE_KEY = "admin-freie-essen-v1";
 const ADMIN_LOCAL_SESSION_KEY = "admin-local-session-v1";
 const adminLogoutButton = document.getElementById("btn-admin-abmelden");
 
@@ -163,17 +162,29 @@ function toIsoDate(date) {
     return `${year}-${month}-${day}`;
 }
 
-function toGermanNumericDate(date) {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = String(date.getFullYear());
-    return `${day}.${month}.${year}`;
-}
-
 function toGermanDateLabel(date) {
     const wochentag = WOCHENTAGE[date.getDay()];
     const datum = date.toLocaleDateString("de-DE");
     return `${wochentag}, ${datum}`;
+}
+
+function getBerlinIsoDateNow() {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Berlin",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).formatToParts(new Date());
+
+    const year = parts.find(function (part) { return part.type === "year"; })?.value;
+    const month = parts.find(function (part) { return part.type === "month"; })?.value;
+    const day = parts.find(function (part) { return part.type === "day"; })?.value;
+
+    if (!year || !month || !day) {
+        return getTodayIso();
+    }
+
+    return `${year}-${month}-${day}`;
 }
 
 function toEuroText(value) {
@@ -213,16 +224,6 @@ function normalizeErnaehrungstyp(rawValue) {
     }
 
     return null;
-}
-
-function renderErnaehrungsBadgeHtml(rawValue) {
-    const normalized = normalizeErnaehrungstyp(rawValue);
-    if (!normalized) {
-        return "";
-    }
-
-    const className = normalized === "vegan" ? "ernaehrung-vegan" : "ernaehrung-vegetarisch";
-    return `<span class="ernaehrung-badge-admin ${className}">${normalized}</span>`;
 }
 
 function updateErnaehrungsBadgeElement(element, rawValue) {
@@ -306,34 +307,6 @@ function getTodayIsoVarianten() {
     const lokal = getTodayIso();
     const utc = new Date().toISOString().slice(0, 10);
     return Array.from(new Set([lokal, utc]));
-}
-
-function loadFreeMealState() {
-    const todayIso = getTodayIso();
-    try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_FREE_KEY) || "{}");
-        return parsed[todayIso] || emptyFreieEssenState();
-    } catch (_error) {
-        return emptyFreieEssenState();
-    }
-}
-
-function saveFreeMealState(nextState) {
-    const todayIso = getTodayIso();
-    let parsed = {};
-    try {
-        parsed = JSON.parse(localStorage.getItem(STORAGE_FREE_KEY) || "{}");
-    } catch (_error) {
-        parsed = {};
-    }
-
-    parsed[todayIso] = {
-        Studierende: nextState.Studierende || 0,
-        Bedienstete: nextState.Bedienstete || 0,
-        Gaeste: nextState.Gaeste || 0
-    };
-
-    localStorage.setItem(STORAGE_FREE_KEY, JSON.stringify(parsed));
 }
 
 function numberFromAny(value) {
@@ -435,21 +408,6 @@ async function ladeFreieEssenAusDb() {
         Bedienstete: 0,
         Gaeste: total
     };
-}
-
-async function ermittleHeutigeSpeiseplanId() {
-    const todayIso = getTodayIso();
-    const { data, error } = await supabase
-        .from("Speiseplan")
-        .select("id")
-        .eq("Ausgabedatum", todayIso)
-        .maybeSingle();
-
-    if (error) {
-        return null;
-    }
-
-    return data?.id ?? null;
 }
 
 async function speichereFreieEssenInDb(delta) {
@@ -733,7 +691,7 @@ async function ladeVorschauNaechste5Tage() {
     }
 
     if (freieEssenRes.error) {
-        console.warn("FreieEssen fuer Vorschau konnte nicht geladen werden:", freieEssenRes.error.message || freieEssenRes.error);
+        setScanState("Vorschau geladen, aber Freie-Essen-Daten fehlen.", "scan-status-error");
     }
 
     const gerichtByDate = new Map();
@@ -780,16 +738,44 @@ async function ladeVorschauNaechste5Tage() {
 
         const article = document.createElement("article");
         article.className = "vorschau-item";
-        article.innerHTML = `
-            <img src="${gericht?.image_url || "../img/pasta.jpg"}" alt="${item.label} Gericht">
-            <div>
-                <h4>${item.label}</h4>
-                <p>${gericht?.Gerichtname || "Noch kein Gericht eingetragen"}</p>
-                ${renderErnaehrungsBadgeHtml(gericht?.ernaehrungstyp || gericht?.Ernaehrungstyp || gericht?.["Ernährungstyp"] || gericht?.ernaehrung || null)}
-                <p class="vorschau-total">Bestellungen gesamt: ${total}</p>
-                <p class="vorschau-detail">Stud: ${counts.Studierende || 0} | Bed: ${counts.Bedienstete || 0} | Gast: ${counts.Gaeste || 0} | Frei: ${frei}</p>
-            </div>
-        `;
+
+        const image = document.createElement("img");
+        image.src = gericht?.image_url || "../img/pasta.jpg";
+        image.alt = `${item.label} Gericht`;
+
+        const content = document.createElement("div");
+
+        const heading = document.createElement("h4");
+        heading.textContent = item.label;
+
+        const dishText = document.createElement("p");
+        dishText.textContent = gericht?.Gerichtname || "Noch kein Gericht eingetragen";
+
+        const ernaehrungsBadge = document.createElement("span");
+        ernaehrungsBadge.className = "ernaehrung-badge-admin";
+        updateErnaehrungsBadgeElement(
+            ernaehrungsBadge,
+            gericht?.ernaehrungstyp || gericht?.Ernaehrungstyp || gericht?.["Ernährungstyp"] || gericht?.ernaehrung || null
+        );
+
+        const totalText = document.createElement("p");
+        totalText.className = "vorschau-total";
+        totalText.textContent = `Bestellungen gesamt: ${total}`;
+
+        const detailText = document.createElement("p");
+        detailText.className = "vorschau-detail";
+        detailText.textContent = `Stud: ${counts.Studierende || 0} | Bed: ${counts.Bedienstete || 0} | Gast: ${counts.Gaeste || 0} | Frei: ${frei}`;
+
+        content.appendChild(heading);
+        content.appendChild(dishText);
+        if (!ernaehrungsBadge.classList.contains("is-hidden")) {
+            content.appendChild(ernaehrungsBadge);
+        }
+        content.appendChild(totalText);
+        content.appendChild(detailText);
+
+        article.appendChild(image);
+        article.appendChild(content);
 
         vorschauListe.appendChild(article);
     });
@@ -928,15 +914,16 @@ async function ladeBestellungZumScan(scanRef) {
 }
 
 async function reloadOverview() {
-    let freie = loadFreeMealState();
+    let freie = emptyFreieEssenState();
     try {
         freie = await ladeFreieEssenAusDb();
     } catch (error) {
-        console.warn("FreieEssen-DB-Fallback aktiv:", error.message || error);
+        freieEssenVerfuegbarHeute = 0;
+        updateFreieEssenInteraktion();
+        setFreeFeedbackState("Freie-Essen-Stand konnte nicht aus der DB geladen werden.", "free-feedback-error");
+        throw new Error(error.message || "FreieEssen konnte nicht aus der DB geladen werden.");
     }
 
-    // Keep local cache aligned, even if DB is source of truth.
-    saveFreeMealState(freie);
     freieEssenVerfuegbarHeute = (freie.Studierende || 0) + (freie.Bedienstete || 0) + (freie.Gaeste || 0);
     updateFreieEssenInteraktion();
 
@@ -956,7 +943,6 @@ async function ladeDashboard() {
 
         setScanState("Bereit zum Scannen.", "scan-status-success");
     } catch (error) {
-        console.error(error);
         setScanState("Backend konnte nicht geladen werden.", "scan-status-error");
     }
 }
@@ -1127,7 +1113,6 @@ if (scanButton) {
             }
             setScanState("Scan erfolgreich. Bestellung geladen.", "scan-status-success");
         } catch (error) {
-            console.error(error);
             const errorMessage = String(error?.message || "");
             if (errorMessage.includes("Ungueltige Nutzer-ID im QR-Code")) {
                 setScanState("QR-Code enthaelt keine gueltige Nutzer-ID. Bitte erneut scannen.", "scan-status-error");
@@ -1163,7 +1148,6 @@ if (zoneCMainBtn) {
             zoneCMainBtn.disabled = true;
             await markiereAlsAbgeholt();
         } catch (error) {
-            console.error(error);
             if (zoneCStatus) {
                 zoneCStatus.textContent = "Fehler beim Verbuchen: " + (error.message || "Unbekannt");
             }
@@ -1233,7 +1217,6 @@ if (zoneCFreeSaveBtn) {
         try {
             await speichereFreieEssenInDb(delta);
         } catch (error) {
-            console.error(error);
             setFreeFeedbackState("Fehler beim Speichern: " + (error.message || "Unbekannt"), "free-feedback-error");
             return;
         }
@@ -1261,7 +1244,7 @@ if (zoneCFreeSaveBtn) {
 }
 
 async function aufgeraeumeAlteBestellungen() {
-    const heuteIso = new Date().toISOString().split("T")[0];
+    const heuteIso = getBerlinIsoDateNow();
 
     // Abgeholte Bestellungen vor heute: Löschen
     const { data: altAbgeholte, error: fetchAbgeholteError } = await supabase
@@ -1273,7 +1256,6 @@ async function aufgeraeumeAlteBestellungen() {
     if (!fetchAbgeholteError && altAbgeholte && altAbgeholte.length > 0) {
         const ids = altAbgeholte.map(b => b.id);
         await supabase.from("Bestellungen").delete().in("id", ids);
-        console.log(`${ids.length} alte abgeholte Bestellungen gelöscht`);
     }
 
     // Nicht abgeholte Bestellungen vor heute: Archivieren (Status="archiviert")
@@ -1290,8 +1272,8 @@ async function aufgeraeumeAlteBestellungen() {
             .from("Bestellungen")
             .update({ status: "archiviert" })
             .in("id", ids);
-        if (!updateError) {
-            console.log(`${ids.length} alte nicht-abgeholte Bestellungen archiviert`);
+        if (updateError) {
+            setScanState("Archivierung alter Bestellungen fehlgeschlagen.", "scan-status-error");
         }
     }
 }
@@ -1315,7 +1297,7 @@ async function aufgeraeumeAlteBestellungen() {
     // Keep dashboard numbers aligned with timed backend status transitions (e.g. 13:15).
     window.setInterval(function () {
         ladeDashboard().catch(function (error) {
-            console.warn("Dashboard-Aktualisierung fehlgeschlagen:", error?.message || error);
+            setScanState("Dashboard-Aktualisierung fehlgeschlagen. Bitte Seite neu laden.", "scan-status-error");
         });
     }, DASHBOARD_REFRESH_INTERVAL_MS);
 })();

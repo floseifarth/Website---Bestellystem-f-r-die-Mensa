@@ -189,7 +189,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (nameElement) {
         nameElement.textContent = userContext.displayName;
     }
-    aktualisiereBestellstatusHeader(user.id);
     try {
         // QR basiert auf der eindeutig zugeordneten user_id des eingeloggten Nutzers.
         const userIdFuerQr = await ladeUserIdFuerQr(user);

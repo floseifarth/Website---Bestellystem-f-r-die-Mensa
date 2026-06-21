@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { loadCurrentUserContext } from "./userContext.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
@@ -41,7 +42,17 @@ async function aktualisiereBestellstatusHeader(userId) {
     }
 }
 function normalisiereBestellDatum(bestellDatum) {
-    const dateParts = String(bestellDatum || "").split(", ");
+    const raw = String(bestellDatum || "").trim();
+    if (!raw) {
+        return "";
+    }
+
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+        return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    }
+
+    const dateParts = raw.split(", ");
     const datumText = dateParts[1] || dateParts[0] || "";
 
     const numerischMatch = datumText.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
@@ -50,7 +61,7 @@ function normalisiereBestellDatum(bestellDatum) {
         const monat = numerischMatch[2].padStart(2, "0");
         const jahrRoh = numerischMatch[3];
         const jahr = jahrRoh.length === 2 ? `20${jahrRoh}` : jahrRoh;
-        return `${tag}.${monat}.${jahr}`;
+        return `${jahr}-${monat}-${tag}`;
     }
 
     const monate = {
@@ -78,10 +89,10 @@ function normalisiereBestellDatum(bestellDatum) {
     const jahrRoh = textMatch[3];
     const jahr = jahrRoh.length === 2 ? `20${jahrRoh}` : jahrRoh;
     if (!monat) {
-        return datumText;
+        return "";
     }
 
-    return `${tag}.${monat}.${jahr}`;
+    return `${jahr}-${monat}-${tag}`;
 }
 
 function formatiereZeitraumDatum(date) {
@@ -103,14 +114,48 @@ function ladeGerichtzeitraum(startDate, endDate) {
     anzeigeElement.innerText = `Gerichte für den Zeitraum: ${startString} - ${endString}`;
 }
 
-function ermittleVorbestellungsZaehler() {
-    const bestellungen = JSON.parse(localStorage.getItem("bestellungen")) || [];
+function renderGerichtzeitraumSofort() {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 17);
+
+    ladeGerichtzeitraum(startDate, endDate);
+}
+
+async function ermittleVorbestellungsZaehler(userId, startIsoDate, endIsoDate) {
+    const { data, error } = await supabase
+        .from("Bestellungen")
+        .select("gericht_name, bestell_datum, status")
+        .eq("auth_user_id", userId)
+        .limit(5000);
+
+    if (error) {
+        console.warn("Vorbestellungsstatus konnte nicht geladen werden:", error.message || error);
+        return {};
+    }
+
     const zaehler = {};
 
-    bestellungen.forEach(function (bestellung) {
-        const datum = normalisiereBestellDatum(bestellung.date);
-        const gericht = String(bestellung.name || "").trim();
-        const key = `${datum}||${gericht}`;
+    (data || []).forEach(function (bestellung) {
+        const datumIso = normalisiereBestellDatum(bestellung.bestell_datum);
+        const gericht = String(bestellung.gericht_name || "").trim();
+        const status = String(bestellung.status || "").trim().toLowerCase();
+
+        if (!datumIso || !gericht) {
+            return;
+        }
+
+        if (datumIso < startIsoDate || datumIso > endIsoDate) {
+            return;
+        }
+
+        if (status === "archiviert" || status === "storniert") {
+            return;
+        }
+
+        const key = `${datumIso}||${gericht}`;
         zaehler[key] = (zaehler[key] || 0) + 1;
     });
 
@@ -163,8 +208,7 @@ function renderErnaehrungsBadge(rawValue) {
     return `<span class="ernaehrung-badge ${classMap[normalized]}">${normalized}</span>`;
 }
 
-async function ladeGerichte() {
-    const vorbestellungsZaehler = ermittleVorbestellungsZaehler();
+async function ladeGerichte(userId) {
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 
@@ -175,6 +219,7 @@ async function ladeGerichte() {
 
     const startIsoDate = toIsoDate(startDate);
     const endIsoDate = toIsoDate(endDate);
+    const vorbestellungsZaehler = await ermittleVorbestellungsZaehler(userId, startIsoDate, endIsoDate);
 
     const { data, error } = await supabase
         .from("Speiseplan")
@@ -200,11 +245,12 @@ async function ladeGerichte() {
         // Parse the date string (e.g., "2026-06-16") as local date in Berlin timezone
         // by appending T00:00:00 to prevent UTC conversion
         const datum = new Date(gericht.Ausgabedatum + "T00:00:00");
+        const datumIso = toIsoDate(datum);
         const wochentag = WOCHENTAGE[datum.getDay()];
         const datumFormatiert = datum.toLocaleDateString("de-DE", {
             day: "2-digit", month: "2-digit", year: "numeric"
         });
-        const vorbestellKey = `${datumFormatiert}||${String(gericht.Gerichtname || "").trim()}`;
+        const vorbestellKey = `${datumIso}||${String(gericht.Gerichtname || "").trim()}`;
         const anzahlVorbestellungen = vorbestellungsZaehler[vorbestellKey] || 0;
 
         const eintrag = document.createElement("div");
@@ -218,15 +264,15 @@ async function ladeGerichte() {
                 <p>${datumFormatiert}</p>
             </div>
             <div class="speiseplan-mitte">
-                <img src="${gericht.image_url || 'img/Profil.svg'}" class="gericht-bild" alt="${gericht.Gerichtname}">
+                <img src="${escapeHtml(gericht.image_url || 'img/Profil.svg')}" class="gericht-bild" alt="${escapeHtml(gericht.Gerichtname)}">
                 <p>Tagesangebot</p>
-                <h3>${gericht.Gerichtname}</h3>
-                <p class="allergene">Allergene: ${gericht.Allergene || "keine Angabe"}</p>
+                <h3>${escapeHtml(gericht.Gerichtname)}</h3>
+                <p class="allergene">Allergene: ${escapeHtml(gericht.Allergene || "keine Angabe")}</p>
                 ${renderErnaehrungsBadge(gericht.ernaehrungstyp || gericht.Ernaehrungstyp || gericht["Ernährungstyp"] || gericht.ernaehrung || null)}
                 <div class="preise">
-                    <p>Studierende: <strong>${gericht.PreisStudierende}</strong></p>
-                    <p>Bedienstete: <strong>${gericht.PreisBedienstet}</strong></p>
-                    <p>Gäste: <strong>${gericht.PreisGast}</strong></p>
+                    <p>Studierende: <strong>${escapeHtml(gericht.PreisStudierende)}</strong></p>
+                    <p>Bedienstete: <strong>${escapeHtml(gericht.PreisBedienstet)}</strong></p>
+                    <p>Gäste: <strong>${escapeHtml(gericht.PreisGast)}</strong></p>
                 </div>
             </div>
             <div class="speiseplan-rechts"></div>
@@ -248,6 +294,7 @@ async function ladeGerichte() {
 
 // Seite ist bereit – Session und Name laden.
 document.addEventListener("DOMContentLoaded", async function () {
+    renderGerichtzeitraumSofort();
 
     // Aktuelle Supabase-Session abrufen (gespeichert nach dem Login).
     const userContext = await loadCurrentUserContext();
@@ -265,7 +312,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (nameElement) {
         nameElement.textContent = userContext.displayName;
     }
-    aktualisiereBestellstatusHeader(user.id);
     // Speiseplan aus Supabase laden.
-    await ladeGerichte();
+    await ladeGerichte(user.id);
 });

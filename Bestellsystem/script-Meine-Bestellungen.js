@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { loadCurrentUserContext } from "./userContext.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const STANDARD_KATEGORIEN = ["Studierende", "Bedienstete", "Gäste"];
@@ -429,7 +430,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (nameElement) {
         nameElement.textContent = userContext.displayName;
     }
-    aktualisiereBestellstatusHeader(user.id);
     // Preis von Zahl in deutsches Format umwandeln (z.B. 4.10 → "4,10 €")
     function formatPrice(amount) {
         return amount.toFixed(2).replace(".", ",") + " €";
@@ -604,7 +604,6 @@ document.addEventListener("DOMContentLoaded", async function () {
                 }
                 gruppenTotal += parsePrice(k.price);
             });
-            console.log(`Gruppe ${gruppe.name}: alleAbgeholt=${alleAbgeholt}, kategorien=${gruppe.kategorien.map(k => `${k.label}:${k.status}`).join(", ")}`);
 
             const row = document.createElement("div");
             row.className = "speiseplan-eintrag";
@@ -614,10 +613,10 @@ document.addEventListener("DOMContentLoaded", async function () {
                     <p>${datumText}</p>
                 </div>
                 <div class="speiseplan-mitte">
-                    <img src="${gruppe.image || ''}" class="gericht-bild" alt="">
+                    <img src="${escapeHtml(gruppe.image || '')}" class="gericht-bild" alt="${escapeHtml(gruppe.name || '')}">
                     <p>Tagesangebot</p>
                     <h3>
-                        ${gruppe.name || ''}
+                        ${escapeHtml(gruppe.name || '')}
                         ${alleAbgeholt ? '<span class="status-badge status-abgeholt">✓ Abgeholt</span>' : ''}
                     </h3>
                     ${renderErnaehrungsBadge(gruppe.ernaehrungstyp)}
@@ -626,7 +625,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                             ${Object.entries(counts).map(function ([label, n]) {
                 const aboAnteil = aboCounts[label] || 0;
                 const aboText = aboAnteil > 0 ? ` <span class="abo-anteil">(${aboAnteil} Abo)</span>` : "";
-                return `<p class="preise-zeile">${n}x ${label}${aboText}</p>`;
+                return `<p class="preise-zeile">${n}x ${escapeHtml(label)}${aboText}</p>`;
             }).join("")}
                         </div>
                         <p>Gesamt: <strong>${formatPrice(gruppenTotal)}</strong></p>
