@@ -568,3 +568,218 @@ body {
     color: #3d21d9;
     text-decoration: none;
 }
+
+@media (max-width: 1024px) {
+    .header {
+        padding: 0 16px;
+    }
+
+    .header-rechts {
+        gap: 16px;
+    }
+
+    .datum {
+        gap: 12px;
+        font-size: 14px;
+    }
+
+    .menuleiste-links {
+        position: static;
+        width: auto;
+        margin: 14px 16px 0;
+        padding: 10px;
+        border-top-width: 4px;
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        gap: 8px;
+    }
+
+    .menuleiste-links a {
+        margin-bottom: 0;
+        min-width: max-content;
+        padding: 8px 12px;
+    }
+
+    .hauptfeld-mitte {
+        margin-left: 0;
+        padding: 20px 16px 90px;
+        max-width: none;
+    }
+
+    .auswahlleiste,
+    .GerichtanzeigeDatum,
+    .speiseplan-eintrag {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .speiseplan-eintrag {
+        grid-template-columns: 130px 1fr auto;
+        gap: 16px;
+    }
+
+    .gericht-bild {
+        width: 100%;
+        max-width: 220px;
+    }
+
+    .bestellfenster {
+        position: static;
+        width: auto;
+        margin: 0 0 16px;
+        top: auto;
+        bottom: auto;
+        right: auto;
+        border-radius: 16px;
+    }
+
+    .bestellfensterfenster {
+        max-height: 260px;
+    }
+
+    .hauptfeld-mitte table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .fußzeile {
+        position: static;
+        margin-top: 24px;
+    }
+}
+
+@media (max-width: 640px) {
+    body {
+        padding-bottom: 12px;
+    }
+
+    .header {
+        height: auto;
+        min-height: 64px;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .header-rechts {
+        width: auto;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+    }
+
+    .datum {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        text-align: right;
+        font-size: 12px;
+    }
+
+    .profile-box {
+        gap: 6px;
+    }
+
+    .logo-studierendenwerk {
+        width: clamp(145px, 58vw, 220px);
+        max-height: 52px;
+    }
+
+    .logo {
+        width: clamp(96px, 32vw, 132px);
+    }
+
+    .menuleiste-links {
+        margin: 10px 10px 0;
+        padding: 8px;
+        border-radius: 12px;
+    }
+
+    .menuleiste-links a {
+        font-size: 13px;
+        padding: 8px 10px;
+        border-left-width: 0;
+    }
+
+    .hauptfeld-mitte {
+        padding: 14px 10px 24px;
+    }
+
+    .auswahlleiste,
+    .GerichtanzeigeDatum,
+    .speiseplan-eintrag {
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+    .speiseplan-eintrag {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .speiseplan-rechts {
+        align-items: stretch;
+    }
+
+    .gericht-bild {
+        max-width: 100%;
+        height: 160px;
+        margin-bottom: 8px;
+    }
+
+    .bestellfenster {
+        margin: 0 0 12px;
+        padding: 14px;
+    }
+
+    .bestellfenster-titel {
+        font-size: 18px;
+    }
+
+    .bestellfensterfenster {
+        min-height: 120px;
+        max-height: 38vh;
+    }
+
+    .fußzeile {
+        padding: 10px 12px;
+        font-size: 11px;
+    }
+}
+
+/* GLOBAL MOBILE HEADER LOGO ALIGNMENT */
+@media (max-width: 640px) {
+    .header {
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 0;
+    }
+
+    .header-rechts {
+        margin-left: 8px;
+        flex: 1;
+        width: auto;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .logo {
+        width: clamp(96px, 32vw, 132px);
+    }
+
+    .datum {
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+        gap: 4px;
+        font-size: 12px;
+        margin-top: 2px;
+    }
+}

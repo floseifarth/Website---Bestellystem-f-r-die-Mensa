@@ -210,3 +210,110 @@ body {
     color: #3d21d9;
     text-decoration: none;
 }
+
+@media (max-width: 1024px) {
+    .header {
+        padding: 0 16px;
+    }
+
+    .header-rechts {
+        gap: 12px;
+    }
+
+    .datum {
+        font-size: 13px;
+        gap: 10px;
+    }
+
+    .anmelde-container {
+        margin: 18px auto 26px;
+        padding: 20px 24px 22px;
+    }
+
+    .fußzeile {
+        position: static;
+        margin-top: 22px;
+    }
+}
+
+@media (max-width: 640px) {
+    body {
+        padding-bottom: 12px;
+    }
+
+    .header {
+        height: auto;
+        min-height: 64px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .header-rechts {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .datum {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        text-align: right;
+        font-size: 12px;
+    }
+
+    .logo-studierendenwerk {
+        width: clamp(145px, 58vw, 220px);
+        max-height: 52px;
+    }
+
+    .logo {
+        width: clamp(76px, 30vw, 116px);
+    }
+
+    .anmelde-container {
+        width: calc(100% - 20px);
+        margin: 16px auto 20px;
+        padding: 16px 14px 18px;
+    }
+
+    .fußzeile {
+        padding: 10px 12px;
+        font-size: 11px;
+    }
+}
+
+/* GLOBAL MOBILE HEADER LOGO ALIGNMENT */
+@media (max-width: 640px) {
+    .header {
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 0;
+    }
+
+    .header-rechts {
+        margin-left: 8px;
+        flex: 1;
+        width: auto;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .logo {
+        width: clamp(96px, 32vw, 132px);
+    }
+
+    .datum {
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+        gap: 4px;
+        font-size: 12px;
+        margin-top: 2px;
+    }
+}
