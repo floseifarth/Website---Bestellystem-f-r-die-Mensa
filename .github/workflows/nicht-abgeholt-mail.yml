@@ -19,6 +19,7 @@ jobs:
           const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
           const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
           const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+          const REPLY_TO = process.env.EMAILJS_REPLY_TO || "noreply@hs-esslingen.de";
 
           const heute = new Date();
           const yyyy = heute.getFullYear();
@@ -61,7 +62,7 @@ jobs:
                     to_email: bestellung.email,
                     name: bestellung.email,
                     from_name: "MensaGo No-Reply",
-                    reply_to: "mensagohs-esslingen@outlook.de",
+                    reply_to: REPLY_TO,
                     betreff: "Ihre MensaGo-Bestellung wurde nicht abgeholt",
                     titel: "⚠️ Bestellung nicht abgeholt",
                     untertitel: "Ihre Vorbestellung wurde nicht rechtzeitig abgeholt",

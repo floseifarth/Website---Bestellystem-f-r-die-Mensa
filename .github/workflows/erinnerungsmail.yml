@@ -21,7 +21,7 @@ jobs:
           const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
           const FROM_NAME = "MensaGo No-Reply";
-          const REPLY_TO = "mensagohs-esslingen@outlook.de";
+          const REPLY_TO = process.env.EMAILJS_REPLY_TO || "noreply@hs-esslingen.de";
 
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
