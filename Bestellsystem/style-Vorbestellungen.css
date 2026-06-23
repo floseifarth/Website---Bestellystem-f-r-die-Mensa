@@ -561,6 +561,7 @@ body {
 }
 
 @media (max-width: 390px) {
+
     .hauptfeld-mitte,
     .anmelde-container {
         padding-left: 8px;
