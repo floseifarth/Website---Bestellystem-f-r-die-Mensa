@@ -1,5 +1,25 @@
 const directSupabaseUrl = "http://212.71.201.100:8000";
 
+function resolveUpstreamUrl() {
+    const configuredUrl = process.env.SUPABASE_UPSTREAM_URL;
+
+    if (configuredUrl) {
+        const upstreamUrl = new URL(configuredUrl);
+
+        if (upstreamUrl.protocol !== "https:" && process.env.VERCEL_ENV === "production") {
+            throw new Error("SUPABASE_UPSTREAM_URL muss in Production HTTPS verwenden.");
+        }
+
+        return upstreamUrl;
+    }
+
+    if (process.env.VERCEL_ENV === "production") {
+        throw new Error("SUPABASE_UPSTREAM_URL fehlt in Production.");
+    }
+
+    return new URL(directSupabaseUrl);
+}
+
 function buildTargetUrl(req) {
     const pathParts = Array.isArray(req.query.path)
         ? req.query.path
@@ -7,7 +27,7 @@ function buildTargetUrl(req) {
             ? [req.query.path]
             : [];
     const incomingUrl = new URL(req.url, `https://${req.headers.host}`);
-    const targetUrl = new URL(directSupabaseUrl);
+    const targetUrl = resolveUpstreamUrl();
 
     targetUrl.pathname = `/${pathParts.join("/")}`;
     targetUrl.search = incomingUrl.search;
