@@ -21,129 +21,6 @@ body {
     overflow-x: hidden;
 }
 
-/* HEADER */
-.header {
-    height: clamp(70px, 9vw, 125px);
-    background: white;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 clamp(20px, 4vw, 55px);
-    border-bottom: 4px solid #159bd7;
-    box-shadow: 0 4px 18px rgba(13, 43, 82, 0.08);
-}
-
-.header-logo-links {
-    display: flex;
-    align-items: center;
-}
-
-.header-rechts {
-    display: flex;
-    align-items: center;
-    gap: 35px;
-}
-
-.logo-studierendenwerk {
-    width: clamp(200px, 25vw, 360px);
-    max-height: 105px;
-    object-fit: contain;
-    display: block;
-}
-
-.logo {
-    width: clamp(110px, 13vw, 185px);
-    height: auto;
-    display: block;
-}
-
-.bestellstatus-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.bestellstatus-badge.badge-vorbestellt {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.bestellstatus-badge.badge-essensvergabe {
-    background: #ffedd5;
-    color: #9a3412;
-}
-
-.bestellstatus-badge.badge-keine {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-/* DATUM RECHTS */
-.datum {
-    display: flex;
-    align-items: center;
-    gap: 25px;
-    font-weight: 600;
-    color: #0d2b52;
-}
-
-.profile-box {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.profile-pic {
-    width: 28px;
-    height: 28px;
-}
-
-/* SIDEBAR LINKS */
-.menuleiste-links {
-    position: fixed;
-    top: clamp(90px, 10.5vw, 155px);
-    left: clamp(10px, 1.5vw, 30px);
-    width: clamp(180px, 18vw, 260px);
-    background: white;
-    border-radius: 18px;
-    padding: 18px;
-    border-top: 6px solid #159bd7;
-    box-shadow: 0 8px 25px rgba(13, 43, 82, 0.10);
-}
-
-.menuleiste-links a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: clamp(8px, 1vw, 13px) 16px;
-    margin-bottom: 6px;
-    text-decoration: none;
-    color: #24539b;
-    font-size: clamp(13px, 1.2vw, 16px);
-    border-radius: 10px;
-    border-left: 4px solid transparent;
-}
-
-.menuleiste-links a:hover {
-    background-color: #eef8fc;
-    border-left-color: #159bd7;
-}
-
-.menuleiste-links .active {
-    background: linear-gradient(90deg, #159bd7, #1fb286);
-    color: white;
-    font-weight: bold;
-    border-left-color: #ff7a2f;
-}
-
-.menu-icon {
-    width: 22px;
-    height: 22px;
-}
-
 /* HAUPTINHALT */
 .hauptfeld-mitte {
     margin-left: clamp(200px, 21vw, 320px);
@@ -582,37 +459,6 @@ body {
 }
 
 @media (max-width: 1024px) {
-    .header {
-        padding: 0 16px;
-    }
-
-    .header-rechts {
-        gap: 16px;
-    }
-
-    .datum {
-        gap: 12px;
-        font-size: 14px;
-    }
-
-    .menuleiste-links {
-        position: static;
-        width: auto;
-        margin: 14px 16px 0;
-        padding: 10px;
-        border-top-width: 4px;
-        display: flex;
-        overflow-x: auto;
-        white-space: nowrap;
-        gap: 8px;
-    }
-
-    .menuleiste-links a {
-        margin-bottom: 0;
-        min-width: max-content;
-        padding: 8px 12px;
-    }
-
     .hauptfeld-mitte {
         margin-left: 0;
         padding: 20px 16px 90px;
@@ -668,55 +514,6 @@ body {
         padding-bottom: 12px;
     }
 
-    .header {
-        height: auto;
-        min-height: 0;
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 10px 12px;
-    }
-
-    .header-rechts {
-        width: auto;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 4px;
-    }
-
-    .datum {
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 4px;
-        text-align: right;
-        font-size: 12px;
-    }
-
-    .profile-box {
-        gap: 6px;
-    }
-
-    .logo-studierendenwerk {
-        width: clamp(145px, 58vw, 220px);
-        max-height: 52px;
-    }
-
-    .logo {
-        width: clamp(96px, 32vw, 132px);
-    }
-
-    .menuleiste-links {
-        margin: 10px 10px 0;
-        padding: 8px;
-        border-radius: 12px;
-    }
-
-    .menuleiste-links a {
-        font-size: 12px;
-        padding: 8px;
-        border-left-width: 0;
-    }
-
     .hauptfeld-mitte {
         padding: 14px 10px 24px;
     }
@@ -764,29 +561,6 @@ body {
 }
 
 @media (max-width: 390px) {
-    .header {
-        padding: 8px;
-    }
-
-    .logo-studierendenwerk {
-        width: clamp(130px, 56vw, 180px);
-    }
-
-    .logo {
-        width: clamp(82px, 30vw, 112px);
-    }
-
-    .menuleiste-links {
-        margin: 8px;
-        padding: 6px;
-    }
-
-    .menuleiste-links a {
-        font-size: 11px;
-        padding: 7px;
-        gap: 6px;
-    }
-
     .hauptfeld-mitte,
     .anmelde-container {
         padding-left: 8px;
@@ -805,16 +579,6 @@ body {
 }
 
 @media (max-width: 340px) {
-    .datum {
-        font-size: 11px;
-    }
-
-    .bestellstatus-badge {
-        max-width: 112px;
-        font-size: 11px;
-        padding: 2px 8px;
-    }
-
     .menuleiste-links a {
         font-size: 10px;
     }
