@@ -48,10 +48,41 @@ body {
     display: block;
 }
 
+.profile-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-pic {
+    width: 28px;
+    height: 28px;
+}
+
 .logo {
     width: clamp(96px, 12vw, 160px);
     height: auto;
     display: block;
+}
+
+.profile-box {
+    display: flex;
+    align-items: center;
+
+    .profile-box {
+        gap: 8px;
+    }
+
+    gap: 10px;
+}
+
+.profile-pic {
+    width: 28px;
+    height: 28px;
+}
+
+.profile-box {
+    gap: 6px;
 }
 
 .anmelde-container {
@@ -61,6 +92,11 @@ body {
     padding: 28px 34px 26px;
     margin: 24px auto 40px;
     box-shadow: 0 4px 8px rgba(4, 4, 4, 0.1);
+}
+
+.profile-pic {
+    width: 24px;
+    height: 24px;
 }
 
 .login-logo {
@@ -280,6 +316,10 @@ body {
         gap: 12px;
     }
 
+    .profile-box {
+        gap: 8px;
+    }
+
     .anmelde-container {
         margin: 18px auto 26px;
         padding: 24px 24px 22px;
@@ -313,6 +353,10 @@ body {
         gap: 8px;
     }
 
+    .profile-box {
+        gap: 6px;
+    }
+
     .logo-studierendenwerk {
         width: clamp(145px, 58vw, 220px);
         max-height: 52px;
@@ -320,6 +364,11 @@ body {
 
     .logo {
         width: clamp(92px, 32vw, 132px);
+    }
+
+    .profile-pic {
+        width: 24px;
+        height: 24px;
     }
 
     .anmelde-container {

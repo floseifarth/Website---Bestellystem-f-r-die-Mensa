@@ -65,6 +65,26 @@ body {
     white-space: nowrap;
 }
 
+.bestellstatus-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.profile-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-pic {
+    width: 28px;
+    height: 28px;
+}
+
 .anmelde-container {
     background-color: #ffffff;
     border-radius: 8px;
@@ -213,6 +233,10 @@ body {
         gap: 10px;
     }
 
+    .profile-box {
+        gap: 6px;
+    }
+
     .logo-studierendenwerk {
         width: min(46vw, 180px);
         max-height: 56px;
@@ -224,6 +248,15 @@ body {
 
     .datum {
         font-size: 12px;
+        gap: 8px;
+        white-space: normal;
+        align-items: flex-end;
+        text-align: right;
+    }
+
+    .profile-pic {
+        width: 24px;
+        height: 24px;
     }
 
     .anmelde-container {

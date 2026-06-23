@@ -676,14 +676,8 @@ body {
         height: 24px;
     }
 
-    #user-display-name {
-        display: none;
-    }
-
     .bestellstatus-badge {
-        max-width: 140px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     .logo-studierendenwerk {

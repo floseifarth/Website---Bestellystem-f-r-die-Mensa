@@ -532,6 +532,10 @@ input:checked+.slider:before {
         font-size: 14px;
     }
 
+    .profile-box {
+        gap: 8px;
+    }
+
     .menuleiste-links {
         position: static;
         width: auto;
@@ -585,6 +589,12 @@ input:checked+.slider:before {
     .header-rechts {
         width: 100%;
         margin-left: 0;
+
+        .profile-pic {
+            width: 24px;
+            height: 24px;
+        }
+
         justify-content: space-between;
         align-items: flex-start;
         gap: 8px;
@@ -680,9 +690,7 @@ input:checked+.slider:before {
     }
 
     .bestellstatus-badge {
-        max-width: 112px;
-        font-size: 11px;
-        padding: 2px 8px;
+        max-width: 100%;
     }
 
     .menuleiste-links a {

@@ -54,6 +54,17 @@ body {
     display: block;
 }
 
+.profile-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-pic {
+    width: 28px;
+    height: 28px;
+}
+
 /* DATUM RECHTS */
 .datum {
     display: flex;
@@ -229,6 +240,10 @@ body {
         gap: 10px;
     }
 
+    .profile-box {
+        gap: 6px;
+    }
+
     .logo-studierendenwerk {
         width: min(46vw, 180px);
         max-height: 56px;
@@ -240,6 +255,15 @@ body {
 
     .datum {
         font-size: 12px;
+        gap: 8px;
+        white-space: normal;
+        align-items: flex-end;
+        text-align: right;
+    }
+
+    .profile-pic {
+        width: 24px;
+        height: 24px;
     }
 
     .anmelde-container {
@@ -281,6 +305,10 @@ body {
 
     .header-rechts {
         gap: 12px;
+    }
+
+    .profile-box {
+        gap: 8px;
     }
 
     .datum {
@@ -327,6 +355,7 @@ body {
         gap: 4px;
         text-align: right;
         font-size: 12px;
+        white-space: normal;
     }
 
     .logo-studierendenwerk {
