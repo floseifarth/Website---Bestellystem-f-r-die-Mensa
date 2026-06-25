@@ -2,7 +2,7 @@ body {
     margin: 0;
     font-family: "Open Sans", sans-serif;
     background-color: #f3f3f3;
-    padding: 0 0 70px;
+    padding: 0 0 60px;
 }
 
 *,
@@ -323,7 +323,7 @@ body {
 
     .fußzeile {
         position: static;
-        margin-top: 22px;
+        margin-top: 24px;
     }
 }
 

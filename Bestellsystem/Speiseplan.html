@@ -86,34 +86,36 @@
       <!-- Wird dynamisch per JavaScript befüllt -->
     </div>
 
+  </div>
 
 
 
-    <!-- FUSSZEILE -->
-    <footer class="fußzeile">
-      (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
-      <a href="https://www.hs-esslingen.de/datenschutz">Datenschutz</a> |
-      <a href="https://www.hs-esslingen.de/impressum">Impressum</a> |
-      <a href="https://www.hs-esslingen.de/kontakt">Kontakt</a>
-    </footer>
 
-    <!-- Datum Script -->
-    <script>
-      let heute = new Date();
+  <!-- FUSSZEILE -->
+  <footer class="fußzeile">
+    (c) 2026 Hochschule Esslingen - Mensa Vorbestellung |
+    <a href="https://www.hs-esslingen.de/datenschutz">Datenschutz</a> |
+    <a href="https://www.hs-esslingen.de/impressum">Impressum</a> |
+    <a href="https://www.hs-esslingen.de/kontakt">Kontakt</a>
+  </footer>
 
-      let tage = [
-        "Sonntag", "Montag", "Dienstag",
-        "Mittwoch", "Donnerstag", "Freitag", "Samstag"
-      ];
+  <!-- Datum Script -->
+  <script>
+    let heute = new Date();
 
-      let wochentag = tage[heute.getDay()];
-      let datum = heute.toLocaleDateString("de-DE");
+    let tage = [
+      "Sonntag", "Montag", "Dienstag",
+      "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+    ];
 
-      document.getElementById("datum").innerText = wochentag + ", " + datum;
-    </script>
+    let wochentag = tage[heute.getDay()];
+    let datum = heute.toLocaleDateString("de-DE");
 
-    <script type="module" src="script-Abo-Status.js"></script>
-    <script type="module" src="script-Speiseplan.js?v=20260620-1"></script>
+    document.getElementById("datum").innerText = wochentag + ", " + datum;
+  </script>
+
+  <script type="module" src="script-Abo-Status.js"></script>
+  <script type="module" src="script-Speiseplan.js?v=20260620-1"></script>
 
 </body>
 
