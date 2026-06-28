@@ -547,6 +547,8 @@ document.addEventListener("DOMContentLoaded", async function () {
             throw new Error("Kein eingeloggter Nutzer gefunden.");
         }
 
+        const aktuelleBestellungenProTag = await ladeAlleBestehendenBestellungenProTag(user.id);
+
         const rows = orderItems.map(item => ({
             auth_user_id: user.id,
             email: nutzerEmail || user.email || "",
@@ -560,7 +562,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         const anzahlNeuProTag = zaehleEintraegeProTag(orderItems);
         const limitUeberschritten = Object.keys(anzahlNeuProTag).find(function (isoDate) {
-            const bereits = bestehendeBestellungenProTag[isoDate] || 0;
+            const bereits = aktuelleBestellungenProTag[isoDate] || 0;
             const neu = anzahlNeuProTag[isoDate] || 0;
             return bereits + neu > MAX_GERICHTE_PRO_TAG;
         });
