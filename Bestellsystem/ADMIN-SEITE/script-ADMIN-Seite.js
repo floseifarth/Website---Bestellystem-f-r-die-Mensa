@@ -446,7 +446,7 @@ async function speichereFreieEssenInDb(delta) {
     }, 0);
 
     if (verfuegbar < total) {
-        throw new Error(`Nur ${verfuegbar} freie Essen verfuegbar.`);
+        throw new Error(`Nur ${verfuegbar} freie Essen verfügbar.`);
     }
 
     let remaining = total;

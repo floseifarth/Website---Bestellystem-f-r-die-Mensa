@@ -188,6 +188,11 @@
         white-space: normal;
     }
 
+    .bestellstatus-badge {
+        align-self: flex-end;
+        text-align: right;
+    }
+
     .profile-box {
         gap: 6px;
     }
