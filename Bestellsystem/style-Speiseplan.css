@@ -485,6 +485,11 @@ body {
         transform: none;
     }
 
+    .vorbestellt-notiz {
+        left: auto;
+        right: 12px;
+    }
+
     .speiseplan-links,
     .speiseplan-mitte,
     .speiseplan-rechts {
