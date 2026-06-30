@@ -27,12 +27,12 @@ async function aktualisiereBestellstatusHeader(userId) {
     const minute = heute.getMinutes();
     const zeitInMinuten = stunde * 60 + minute;
     const ist1200 = 12 * 60;
-    const ist1330 = 13 * 60 + 30;
+    const ist1315 = 13 * 60 + 15;
 
     badge.style.display = "inline-block";
     badge.className = "bestellstatus-badge";
 
-    if (zeitInMinuten >= ist1200 && zeitInMinuten < ist1330) {
+    if (zeitInMinuten >= ist1200 && zeitInMinuten < ist1315) {
         badge.classList.add("badge-essensvergabe");
         badge.textContent = "Essensvergabe";
     } else if (hatBestellung) {
