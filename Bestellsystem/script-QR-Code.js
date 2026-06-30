@@ -45,17 +45,28 @@ async function aktualisiereBestellstatusHeader(userId) {
 }
 
 async function ladeUserIdFuerQr(user) {
-    // Wichtig: Scan sucht in Bestellungen ueber auth_user_id.
-    // Deshalb muss der QR-Content immer die Supabase Auth-ID enthalten.
+    // Die App scannt den rohen QR-Inhalt und sucht damit StudentenHochschule.RZ-Kennung.
+    // Deshalb muss der QR die RZ-Kennung (students.username) enthalten – exakt wie
+    // der App-eigene QR-Code (profil.tsx): rzKennung = student.username ?? auth-id.
     if (!user || !user.id) {
         throw new Error("Keine gueltige Auth-ID vorhanden.");
     }
-    return user.id;
+
+    const { data, error } = await supabase
+        .from("students")
+        .select("username")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    const username = error ? "" : String(data?.username || "").trim();
+
+    // Fallback wie in der App: ohne username die Auth-ID verwenden.
+    return username || user.id;
 }
 
-function baueQrPayload(userId) {
-    // Der Scanner kann später die user_id auslesen und serverseitig zuordnen.
-    return `mensa://pickup?user_id=${encodeURIComponent(userId)}`;
+function baueQrPayload(kennung) {
+    // Die App erwartet den rohen RZ-Kennung-String – KEIN mensa://-Wrapper.
+    return String(kennung || "").trim();
 }
 
 function setQrHintText(text) {
