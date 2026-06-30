@@ -98,7 +98,8 @@ async function upsertRegistriertePerson(username, email, authUserId) {
     const personRow = {
         username: username,
         email: email,
-        user_id: authUserId
+        user_id: authUserId,
+        verification_method: "einmalcode"
     };
 
     const { data: existingPerson, error: existingError } = await supabase
