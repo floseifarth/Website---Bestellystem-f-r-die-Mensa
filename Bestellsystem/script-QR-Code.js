@@ -54,7 +54,7 @@ async function ladeUserIdFuerQr(user) {
 }
 
 function baueQrPayload(userId) {
-    // Der Scanner kann spaeter die user_id auslesen und serverseitig zuordnen.
+    // Der Scanner kann später die user_id auslesen und serverseitig zuordnen.
     return `mensa://pickup?user_id=${encodeURIComponent(userId)}`;
 }
 

@@ -1,6 +1,6 @@
 -- Erzwingt serverseitig maximal 3 aktive Bestellungen pro Person und Tag.
--- Die Frontend-Pruefung bleibt bestehen, aber diese Absicherung verhindert
--- auch Doppelbestellungen aus zwei Tabs oder bei veralteten UI-Zustaenden.
+-- Die Frontend-Prüfung bleibt bestehen, aber diese Absicherung verhindert
+-- auch Doppelbestellungen aus zwei Tabs oder bei veralteten UI-Zuständen.
 
 create or replace function public.enforce_max_3_bestellungen_pro_tag()
 returns trigger

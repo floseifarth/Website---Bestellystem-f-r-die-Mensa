@@ -118,14 +118,14 @@ async function login() {
     const email = emailElement.value.trim();
     const password = passwordElement.value;
 
-    // Einfache Pflichtfeld-Pruefung vor dem API-Aufruf.
+    // Einfache Pflichtfeld-Prüfung vor dem API-Aufruf.
     if (!email || !password) {
         setMessage("Bitte E-Mail und Passwort eingeben.", true);
         return;
     }
 
-    // Info an den Nutzer: Login wird gerade geprueft.
-    setMessage("Anmeldung wird geprueft...", false);
+    // Info an den Nutzer: Login wird gerade geprüft.
+    setMessage("Anmeldung wird geprüft...", false);
 
     // Login-Anfrage an Supabase Auth schicken.
     // Bei Erfolg kommt eine Session zurueck, bei Fehler ist `error` gesetzt.

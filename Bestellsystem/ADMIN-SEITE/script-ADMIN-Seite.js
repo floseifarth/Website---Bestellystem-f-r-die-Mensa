@@ -88,7 +88,7 @@ async function hatGueltigeAuthAdminSession() {
 }
 
 async function pruefeAdminZugriff() {
-    // Lokale Browserdaten sind manipulierbar und duerfen keine Adminrechte vergeben.
+    // Lokale Browserdaten sind manipulierbar und dürfen keine Adminrechte vergeben.
     sessionStorage.removeItem(ADMIN_LOCAL_SESSION_KEY);
     return hatGueltigeAuthAdminSession();
 }
@@ -503,7 +503,7 @@ function updateZoneCCardSummary() {
 
     if (zoneCCardStud) zoneCCardStud.textContent = `${stud}x Studierende`;
     if (zoneCCardBed) zoneCCardBed.textContent = `${bed}x Bedienstete`;
-    if (zoneCCardGast) zoneCCardGast.textContent = `${gast}x Gaeste`;
+    if (zoneCCardGast) zoneCCardGast.textContent = `${gast}x Gäste`;
     if (zoneCCardTotal) zoneCCardTotal.textContent = `Gesamt: ${total} Bestellungen`;
 }
 
@@ -1234,7 +1234,7 @@ if (zoneCFreeSaveBtn) {
         }
 
         setFreeFeedbackState(
-            "Freies Essen verbucht - Studierende: " + stud + ", Bedienstete: " + bed + ", Gaeste: " + gast + " (Gesamt: " + gesamt + ")",
+            "Freies Essen verbucht - Studierende: " + stud + ", Bedienstete: " + bed + ", Gäste: " + gast + " (Gesamt: " + gesamt + ")",
             "free-feedback-success"
         );
 

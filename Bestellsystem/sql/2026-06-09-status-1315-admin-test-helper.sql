@@ -40,7 +40,7 @@ begin
 end;
 $$;
 
--- Vorher/Nachher-Pruefung
+-- Vorher/Nachher-Prüfung
 with vorher as (
     select status, count(*) as anzahl
     from "Bestellungen"

@@ -104,7 +104,7 @@ async function login() {
         const username = normalizeText(usernameInput);
         const password = passwordElement.value;
 
-        // Schritt 1: Pflichtfeld-Pruefung – beide Felder muessen ausgefuellt sein.
+        // Schritt 1: Pflichtfeld-Prüfung – beide Felder müssen ausgefüllt sein.
         if (!username || !password) {
             setMessage("Bitte Benutzername und Passwort eingeben.", true);
             return;
@@ -121,7 +121,7 @@ async function login() {
             return;
         }
 
-        // Schritt 2: Erst Auth-Login pruefen.
+        // Schritt 2: Erst Auth-Login prüfen.
         const emailForLogin = baueLoginEmailAusEingabe(usernameInput);
         setMessage("Anmeldedaten werden geprüft...", false);
 
