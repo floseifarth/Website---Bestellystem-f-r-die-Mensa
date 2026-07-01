@@ -430,6 +430,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (nameElement) {
         nameElement.textContent = userContext.displayName;
     }
+
+    // Badge mit Bestellstatus aktualisieren
+    if (user) {
+        await aktualisiereBestellstatusHeader(user.id);
+    }
+
     // Preis von Zahl in deutsches Format umwandeln (z.B. 4.10 → "4,10 €")
     function formatPrice(amount) {
         return amount.toFixed(2).replace(".", ",") + " €";

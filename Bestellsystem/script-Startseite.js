@@ -53,6 +53,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const nameElement = document.getElementById("user-display-name");
     if (nameElement) {
         nameElement.textContent = userContext.displayName;
+    }
 
+    // Badge mit Bestellstatus aktualisieren
+    if (user) {
+        await aktualisiereBestellstatusHeader(user.id);
     }
 });

@@ -159,6 +159,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         nameElement.textContent = userContext.displayName;
     }
 
+    // Badge mit Bestellstatus aktualisieren
+    if (user) {
+        await aktualisiereBestellstatusHeader(user.id);
+    }
+
     if (userContext.profile) {
         renderProfile(userContext.profile, user);
     } else {

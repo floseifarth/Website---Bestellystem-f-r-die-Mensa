@@ -312,6 +312,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (nameElement) {
         nameElement.textContent = userContext.displayName;
     }
+
+    // Badge mit Bestellstatus aktualisieren
+    if (user) {
+        await aktualisiereBestellstatusHeader(user.id);
+    }
+
     // Speiseplan aus Supabase laden.
     await ladeGerichte(user.id);
 });
