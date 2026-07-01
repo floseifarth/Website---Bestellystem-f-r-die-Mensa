@@ -468,74 +468,120 @@ function initEventListeners() {
 
 // ─── Initialisierung ─────────────────────────────────────────────────────────
 
-document.addEventListener("DOMContentLoaded", async () => {
-    // Datum im Header
+// Header sofort laden (unabhängig von Abo-Daten)
+function initHeader() {
     const heute = new Date();
     const wochentag = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"][heute.getDay()];
     const datumEl = document.getElementById("datum");
     if (datumEl) datumEl.textContent = wochentag + ", " + heute.toLocaleDateString("de-DE");
+}
 
-    // Session prüfen
-    const userContext = await loadCurrentUserContext();
-    const user = userContext.user;
+// Hauptseite laden
+async function initSeite() {
+    console.log("✅ DOMContentLoaded gestartet");
 
-    if (!user) {
-        window.location.href = "index.html";
-        return;
-    }
-
-    const authEmail = (user.email || "").trim();
-    currentEmail = userContext.email || authEmail;
-    currentAuthUserId = user.id || null;
-
-    // Anzeigename
-    const nameEl = document.getElementById("user-display-name");
-    if (nameEl) {
-        nameEl.textContent = userContext.displayName;
-    }
-
-    // Badge mit Bestellstatus aktualisieren
-    if (user) {
-        try {
-            await aktualisiereBestellstatusHeader(user.id);
-            console.log("Badge aktualisiert für user", user.id);
-        } catch (error) {
-            console.error("Fehler beim Badge-Update:", error);
-        }
-    }
-
-    // Abo laden
     const loadingEl = document.getElementById("abo-loading");
     const formularEl = document.getElementById("abo-formular");
 
-    const { data, error } = await supabase
-        .from("bestellabos")
-        .select("*")
-        .eq("email", currentEmail)
-        .maybeSingle();
+    try {
+        // Session prüfen
+        console.log("📡 loadCurrentUserContext wird aufgerufen...");
+        const userContext = await loadCurrentUserContext();
+        console.log("✅ userContext geladen:", userContext);
+        const user = userContext.user;
 
-    if (error) {
-        loadingEl.textContent = "Fehler beim Laden der Abo-Einstellungen: " + error.message;
-        return;
-    }
+        console.log("👤 user:", user);
 
-    if (data) {
-        abo = {
-            aktiv: data.aktiv ?? false,
-            wochentage: data.wochentage ?? [],
-            ausgeschlossene_allergene: data.ausgeschlossene_allergene ?? [],
-            vegetarisch: data.vegetarisch ?? false,
-            vegan: data.vegan ?? false,
-            nutzertyp: data.nutzertyp ?? "Studierende",
-        };
-        // Auto-Apply beim Seitenaufruf (falls abo aktiv)
-        if (abo.aktiv && abo.wochentage.length > 0) {
-            autoApplyAbo(abo, currentEmail); // fire & forget
+        if (!user) {
+            console.warn("⚠️ Kein User - redirect zu index.html");
+            window.location.href = "index.html";
+            return;
+        }
+
+        const authEmail = (user.email || "").trim();
+        currentEmail = userContext.email || authEmail;
+        currentAuthUserId = user.id || null;
+
+        // Anzeigename
+        const nameEl = document.getElementById("user-display-name");
+        if (nameEl) {
+            nameEl.textContent = userContext.displayName;
+        }
+
+        // Badge mit Bestellstatus aktualisieren (im Hintergrund)
+        if (user) {
+            aktualisiereBestellstatusHeader(user.id).catch(err => {
+                console.error("❌ Fehler beim Badge-Update:", err);
+            });
+        }
+
+        console.log("📦 Versuche Abo-Einstellungen zu laden...");
+
+        try {
+            const { data, error } = await supabase
+                .from("bestellabos")
+                .select("*")
+                .eq("email", currentEmail)
+                .maybeSingle();
+
+            if (error) {
+                console.error("❌ DB-Fehler beim Laden der Abo-Einstellungen:", error);
+                if (loadingEl) {
+                    loadingEl.textContent = "Warnung: Konnte Einstellungen nicht laden. Verwende Standard-Einstellungen.";
+                }
+            } else {
+                console.log("✅ Abo-Daten geladen:", data);
+            }
+
+            if (data) {
+                abo = {
+                    aktiv: data.aktiv ?? false,
+                    wochentage: data.wochentage ?? [],
+                    ausgeschlossene_allergene: data.ausgeschlossene_allergene ?? [],
+                    vegetarisch: data.vegetarisch ?? false,
+                    vegan: data.vegan ?? false,
+                    nutzertyp: data.nutzertyp ?? "Studierende",
+                };
+                console.log("✅ Abo-Zustand aktualisiert:", abo);
+            }
+        } catch (err) {
+            console.error("❌ Exception beim Laden der Abo-Einstellungen:", err);
+            if (loadingEl) {
+                loadingEl.textContent = "Fehler: " + err.message;
+            }
+        }
+
+        // ✅ UI anzeigen (NACH Datenladen!)
+        if (loadingEl) loadingEl.hidden = true;
+        if (formularEl) formularEl.hidden = false;
+        initEventListeners();
+        renderFormular();
+
+        // Abo-Auto-Apply im Hintergrund starten
+        if (abo.aktiv && abo.wochentage.length > 0 && currentEmail) {
+            console.log("🔄 Starte autoApplyAbo...");
+            autoApplyAbo(abo, currentEmail).catch(err => {
+                console.error("❌ autoApplyAbo Fehler:", err);
+            });
+        }
+
+        console.log("✅ Bestellabo-Seite erfolgreich geladen");
+    } catch (globalError) {
+        console.error("❌ KRITISCHER FEHLER in initSeite:", globalError);
+        if (loadingEl) {
+            loadingEl.textContent = "FEHLER: " + (globalError?.message || String(globalError));
+            loadingEl.hidden = false;
+        }
+        if (formularEl) {
+            formularEl.hidden = true;
         }
     }
+}
 
-    loadingEl.hidden = true;
-    formularEl.hidden = false;
-    initEventListeners();
-    renderFormular();
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("✅ DOMContentLoaded event ausgelöst");
+    initHeader();
+    initSeite().catch(err => {
+        console.error("❌ initSeite Promise Fehler:", err);
+    });
 });
