@@ -213,23 +213,20 @@ async function autoApplyAbo(aboData, forEmail) {
         .select("*")
         .in("Ausgabedatum", wochentage);
 
-    // Alle existierenden Bestellungen auf EINMAL laden (statt N+1 Queries)
-    const { data: existingBestellungen } = await supabase
-        .from("Bestellungen")
-        .select("bestell_datum")
-        .eq("email", forEmail)
-        .in("bestell_datum", wochentage);
-
-    const existingDates = new Set((existingBestellungen || []).map(b => b.bestell_datum));
-
     const rows = [];
     for (const meal of (speiseplan || [])) {
         const dow = isoToDate(meal.Ausgabedatum).getDay();
         if (!aboData.wochentage.includes(dow)) continue;
         if (!matchesAbo(aboData, meal)) continue;
 
-        // In-Memory Check statt Datenbankabfrage
-        if (existingDates.has(meal.Ausgabedatum)) continue;
+        // Bereits bestellt?
+        const { data: existing } = await supabase
+            .from("Bestellungen")
+            .select("id")
+            .eq("email", forEmail)
+            .eq("bestell_datum", meal.Ausgabedatum)
+            .limit(1);
+        if (existing && existing.length > 0) continue;
 
         const kategorie = aboData.nutzertyp === "Externe" ? "Gäste" : aboData.nutzertyp;
         const preis = aboData.nutzertyp === "Studierende"
