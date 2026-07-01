@@ -205,59 +205,63 @@ async function doUpsert(aboData) {
 async function autoApplyAbo(aboData, forEmail) {
     if (!aboData.aktiv || aboData.wochentage.length === 0) return;
 
-    const wochentage = getUebernachsteWoche();
-    if (wochentage.length === 0) return;
+    try {
+        const wochentage = getUebernachsteWoche();
+        if (wochentage.length === 0) return;
 
-    const { data: speiseplan } = await supabase
-        .from("Speiseplan")
-        .select("*")
-        .in("Ausgabedatum", wochentage);
+        const { data: speiseplan } = await supabase
+            .from("Speiseplan")
+            .select("*")
+            .in("Ausgabedatum", wochentage);
 
-    // Alle existierenden Bestellungen auf EINMAL laden (statt N+1 Queries)
-    const { data: existingBestellungen } = await supabase
-        .from("Bestellungen")
-        .select("bestell_datum")
-        .eq("email", forEmail)
-        .in("bestell_datum", wochentage);
+        // Alle existierenden Bestellungen auf EINMAL laden (statt N+1 Queries)
+        const { data: existingBestellungen } = await supabase
+            .from("Bestellungen")
+            .select("bestell_datum")
+            .eq("email", forEmail)
+            .in("bestell_datum", wochentage);
 
-    const existingDates = new Set((existingBestellungen || []).map(b => b.bestell_datum));
+        const existingDates = new Set((existingBestellungen || []).map(b => b.bestell_datum));
 
-    const rows = [];
-    for (const meal of (speiseplan || [])) {
-        const dow = isoToDate(meal.Ausgabedatum).getDay();
-        if (!aboData.wochentage.includes(dow)) continue;
-        if (!matchesAbo(aboData, meal)) continue;
+        const rows = [];
+        for (const meal of (speiseplan || [])) {
+            const dow = isoToDate(meal.Ausgabedatum).getDay();
+            if (!aboData.wochentage.includes(dow)) continue;
+            if (!matchesAbo(aboData, meal)) continue;
 
-        // In-Memory Check statt Datenbankabfrage
-        if (existingDates.has(meal.Ausgabedatum)) continue;
+            // In-Memory Check statt Datenbankabfrage
+            if (existingDates.has(meal.Ausgabedatum)) continue;
 
-        const kategorie = aboData.nutzertyp === "Externe" ? "Gäste" : aboData.nutzertyp;
-        const preis = aboData.nutzertyp === "Studierende"
-            ? meal.PreisStudierende
-            : aboData.nutzertyp === "Bedienstete"
-                ? meal.PreisBedienstet
-                : meal.PreisGast;
+            const kategorie = aboData.nutzertyp === "Externe" ? "Gäste" : aboData.nutzertyp;
+            const preis = aboData.nutzertyp === "Studierende"
+                ? meal.PreisStudierende
+                : aboData.nutzertyp === "Bedienstete"
+                    ? meal.PreisBedienstet
+                    : meal.PreisGast;
 
-        rows.push({
-            email: forEmail,
-            gericht_name: meal.Gerichtname,
-            bestell_datum: meal.Ausgabedatum,
-            kategorie,
-            preis,
-            image_url: meal.image_url,
-            auth_user_id: currentAuthUserId,
-            status: "bestellt",
-        });
-    }
-
-    if (rows.length > 0) {
-        const { error } = await supabase.from("Bestellungen").insert(rows);
-        if (!error) {
-            const tage = [...new Set(rows.map(r =>
-                WOCHENTAGE_KURZ[isoToDate(r.bestell_datum).getDay()] || "?"
-            ))].join(" · ");
-            zeigeAutoOrderBadge(`Automatisch bestellt für übernächste Woche: ${tage} (${rows.length} Bestellung${rows.length !== 1 ? "en" : ""})`);
+            rows.push({
+                email: forEmail,
+                gericht_name: meal.Gerichtname,
+                bestell_datum: meal.Ausgabedatum,
+                kategorie,
+                preis,
+                image_url: meal.image_url,
+                auth_user_id: currentAuthUserId,
+                status: "bestellt",
+            });
         }
+
+        if (rows.length > 0) {
+            const { error } = await supabase.from("Bestellungen").insert(rows);
+            if (!error) {
+                const tage = [...new Set(rows.map(r =>
+                    WOCHENTAGE_KURZ[isoToDate(r.bestell_datum).getDay()] || "?"
+                ))].join(" · ");
+                zeigeAutoOrderBadge(`Automatisch bestellt für übernächste Woche: ${tage} (${rows.length} Bestellung${rows.length !== 1 ? "en" : ""})`);
+            }
+        }
+    } catch (error) {
+        console.error("autoApplyAbo Fehler:", error);
     }
 }
 
@@ -472,73 +476,100 @@ function initEventListeners() {
 // ─── Initialisierung ─────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // Datum im Header
-    const heute = new Date();
-    const wochentag = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"][heute.getDay()];
-    const datumEl = document.getElementById("datum");
-    if (datumEl) datumEl.textContent = wochentag + ", " + heute.toLocaleDateString("de-DE");
+    // Sicherheits-Timeout: Falls alles hängt, nach 15 Sekunden abbrechen
+    const timeoutId = setTimeout(() => {
+        console.error("DOMContentLoaded Timeout nach 15s - zeige Fallback UI");
+        const loadingEl = document.getElementById("abo-loading");
+        const formularEl = document.getElementById("abo-formular");
+        if (loadingEl) {
+            loadingEl.textContent = "Fehler beim Laden - bitte aktualisieren Sie die Seite.";
+            loadingEl.hidden = false;
+        }
+        if (formularEl) formularEl.hidden = true;
+    }, 15000);
 
-    // Session prüfen
-    const userContext = await loadCurrentUserContext();
-    const user = userContext.user;
+    try {
+        // Datum im Header
+        const heute = new Date();
+        const wochentag = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"][heute.getDay()];
+        const datumEl = document.getElementById("datum");
+        if (datumEl) datumEl.textContent = wochentag + ", " + heute.toLocaleDateString("de-DE");
 
-    if (!user) {
-        window.location.href = "index.html";
-        return;
-    }
+        // Session prüfen
+        const userContext = await loadCurrentUserContext();
+        const user = userContext.user;
 
-    const authEmail = (user.email || "").trim();
-    currentEmail = userContext.email || authEmail;
-    currentAuthUserId = user.id || null;
+        if (!user) {
+            window.location.href = "index.html";
+            return;
+        }
 
-    // Anzeigename
-    const nameEl = document.getElementById("user-display-name");
-    if (nameEl) {
-        nameEl.textContent = userContext.displayName;
-    }
+        const authEmail = (user.email || "").trim();
+        currentEmail = userContext.email || authEmail;
+        currentAuthUserId = user.id || null;
 
-    // Badge mit Bestellstatus aktualisieren
-    if (user) {
-        try {
-            await aktualisiereBestellstatusHeader(user.id);
-            console.log("Badge aktualisiert für user", user.id);
-        } catch (error) {
-            console.error("Fehler beim Badge-Update:", error);
+        // Anzeigename
+        const nameEl = document.getElementById("user-display-name");
+        if (nameEl) {
+            nameEl.textContent = userContext.displayName;
+        }
+
+        // Badge mit Bestellstatus aktualisieren
+        if (user) {
+            try {
+                await aktualisiereBestellstatusHeader(user.id);
+                console.log("Badge aktualisiert für user", user.id);
+            } catch (error) {
+                console.error("Fehler beim Badge-Update:", error);
+            }
+        }
+
+        // Abo laden
+        const loadingEl = document.getElementById("abo-loading");
+        const formularEl = document.getElementById("abo-formular");
+
+        const { data, error } = await supabase
+            .from("bestellabos")
+            .select("*")
+            .eq("email", currentEmail)
+            .maybeSingle();
+
+        if (error) {
+            loadingEl.textContent = "Fehler beim Laden der Abo-Einstellungen: " + error.message;
+            clearTimeout(timeoutId);
+            return;
+        }
+
+        if (data) {
+            abo = {
+                aktiv: data.aktiv ?? false,
+                wochentage: data.wochentage ?? [],
+                ausgeschlossene_allergene: data.ausgeschlossene_allergene ?? [],
+                vegetarisch: data.vegetarisch ?? false,
+                vegan: data.vegan ?? false,
+                nutzertyp: data.nutzertyp ?? "Studierende",
+            };
+            // Auto-Apply beim Seitenaufruf (falls abo aktiv) - asynchron mit Timeout
+            if (abo.aktiv && abo.wochentage.length > 0) {
+                setTimeout(() => {
+                    autoApplyAbo(abo, currentEmail).catch(err => {
+                        console.error("AutoApplyAbo Fehler:", err);
+                    });
+                }, 100);
+            }
+        }
+
+        loadingEl.hidden = true;
+        formularEl.hidden = false;
+        initEventListeners();
+        renderFormular();
+
+        clearTimeout(timeoutId); // Success - cancel timeout
+    } catch (error) {
+        console.error("Kritischer Fehler in DOMContentLoaded:", error);
+        const loadingEl = document.getElementById("abo-loading");
+        if (loadingEl) {
+            loadingEl.textContent = "Kritischer Fehler: " + error.message;
         }
     }
-
-    // Abo laden
-    const loadingEl = document.getElementById("abo-loading");
-    const formularEl = document.getElementById("abo-formular");
-
-    const { data, error } = await supabase
-        .from("bestellabos")
-        .select("*")
-        .eq("email", currentEmail)
-        .maybeSingle();
-
-    if (error) {
-        loadingEl.textContent = "Fehler beim Laden der Abo-Einstellungen: " + error.message;
-        return;
-    }
-
-    if (data) {
-        abo = {
-            aktiv: data.aktiv ?? false,
-            wochentage: data.wochentage ?? [],
-            ausgeschlossene_allergene: data.ausgeschlossene_allergene ?? [],
-            vegetarisch: data.vegetarisch ?? false,
-            vegan: data.vegan ?? false,
-            nutzertyp: data.nutzertyp ?? "Studierende",
-        };
-        // Auto-Apply beim Seitenaufruf (falls abo aktiv)
-        if (abo.aktiv && abo.wochentage.length > 0) {
-            autoApplyAbo(abo, currentEmail); // fire & forget
-        }
-    }
-
-    loadingEl.hidden = true;
-    formularEl.hidden = false;
-    initEventListeners();
-    renderFormular();
 });
