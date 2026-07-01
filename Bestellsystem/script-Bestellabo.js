@@ -356,9 +356,14 @@ function renderFormular() {
 // ─── Event-Handler ───────────────────────────────────────────────────────────
 
 function initEventListeners() {
+    console.log("🔵 initEventListeners START");
+
     // Wochentag-Chips
-    document.querySelectorAll("#wochentage-row .tag-chip").forEach(btn => {
+    const wochentageButtons = document.querySelectorAll("#wochentage-row .tag-chip");
+    console.log("📍 Wochentage-Buttons gefunden:", wochentageButtons.length);
+    wochentageButtons.forEach(btn => {
         btn.addEventListener("click", () => {
+            console.log("✅ Wochentag geklickt:", btn.dataset.dow);
             const dow = parseInt(btn.dataset.dow, 10);
             if (abo.wochentage.includes(dow)) {
                 abo.wochentage = abo.wochentage.filter(d => d !== dow);
@@ -464,75 +469,82 @@ function initEventListeners() {
         chevron.textContent = isOpen ? "▼" : "▲";
         btn.setAttribute("aria-expanded", String(!isOpen));
     });
+
+    console.log("🟢 initEventListeners COMPLETE - alle Elemente sind jetzt klickbar!");
 }
 
 // ─── Initialisierung ─────────────────────────────────────────────────────────
 
-// Header sofort laden (unabhängig von Abo-Daten)
-function initHeader() {
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("🔴 DOMContentLoaded: START");
+
+    // 1. Header sofort laden
     const heute = new Date();
     const wochentag = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"][heute.getDay()];
     const datumEl = document.getElementById("datum");
-    if (datumEl) datumEl.textContent = wochentag + ", " + heute.toLocaleDateString("de-DE");
-}
+    if (datumEl) {
+        datumEl.textContent = wochentag + ", " + heute.toLocaleDateString("de-DE");
+        console.log("✅ Datum angezeigt");
+    }
 
-// Hauptseite laden
-async function initSeite() {
-    console.log("✅ DOMContentLoaded gestartet");
-
+    // 2. Formular anzeigen
     const loadingEl = document.getElementById("abo-loading");
     const formularEl = document.getElementById("abo-formular");
+    if (loadingEl) loadingEl.hidden = true;
+    if (formularEl) formularEl.hidden = false;
+    console.log("✅ Formular sichtbar gemacht");
 
+    // 3. Events und Render
     try {
-        // Session prüfen
-        console.log("📡 loadCurrentUserContext wird aufgerufen...");
-        const userContext = await loadCurrentUserContext();
-        console.log("✅ userContext geladen:", userContext);
-        const user = userContext.user;
+        initEventListeners();
+        renderFormular();
+        console.log("✅ Events und Formular initialisiert");
+    } catch (err) {
+        console.error("❌ Fehler bei Initialisierung:", err);
+    }
 
-        console.log("👤 user:", user);
+    // 4. Async Session-Laden (blockiert NICHT!)
+    console.log("📡 Starte async Session-Laden...");
+    loadCurrentUserContext()
+        .then(userContext => {
+            console.log("✅ userContext geladen:", userContext);
 
-        if (!user) {
-            console.warn("⚠️ Kein User - redirect zu index.html");
-            window.location.href = "index.html";
-            return;
-        }
+            const user = userContext.user;
+            if (!user) {
+                console.warn("⚠️ Kein User!");
+                return null;
+            }
 
-        const authEmail = (user.email || "").trim();
-        currentEmail = userContext.email || authEmail;
-        currentAuthUserId = user.id || null;
+            // User-Info anzeigen
+            const nameEl = document.getElementById("user-display-name");
+            if (nameEl) nameEl.textContent = userContext.displayName;
 
-        // Anzeigename
-        const nameEl = document.getElementById("user-display-name");
-        if (nameEl) {
-            nameEl.textContent = userContext.displayName;
-        }
+            currentEmail = userContext.email || user.email;
+            currentAuthUserId = user.id;
 
-        // Badge mit Bestellstatus aktualisieren (im Hintergrund)
-        if (user) {
+            // Badge aktualisieren (async, blockiert nicht)
             aktualisiereBestellstatusHeader(user.id).catch(err => {
-                console.error("❌ Fehler beim Badge-Update:", err);
+                console.error("❌ Badge-Fehler:", err);
             });
-        }
 
-        console.log("📦 Versuche Abo-Einstellungen zu laden...");
-
-        try {
-            const { data, error } = await supabase
+            // Abo-Daten laden
+            console.log("📦 Lade Abo-Einstellungen...");
+            return supabase
                 .from("bestellabos")
                 .select("*")
                 .eq("email", currentEmail)
                 .maybeSingle();
-
-            if (error) {
-                console.error("❌ DB-Fehler beim Laden der Abo-Einstellungen:", error);
-                if (loadingEl) {
-                    loadingEl.textContent = "Warnung: Konnte Einstellungen nicht laden. Verwende Standard-Einstellungen.";
-                }
-            } else {
-                console.log("✅ Abo-Daten geladen:", data);
+        })
+        .then(result => {
+            if (!result) {
+                console.log("⚠️ Kein Abo-Ergebnis");
+                return;
             }
-
+            const { data, error } = result;
+            if (error) {
+                console.error("❌ DB-Fehler:", error);
+                return;
+            }
             if (data) {
                 abo = {
                     aktiv: data.aktiv ?? false,
@@ -542,46 +554,23 @@ async function initSeite() {
                     vegan: data.vegan ?? false,
                     nutzertyp: data.nutzertyp ?? "Studierende",
                 };
-                console.log("✅ Abo-Zustand aktualisiert:", abo);
+                console.log("✅ Abo-Daten geladen:", abo);
+                renderFormular();
+
+                // AutoApplyAbo wenn aktiviert
+                if (abo.aktiv && abo.wochentage.length > 0 && currentEmail) {
+                    console.log("🔄 Starte autoApplyAbo...");
+                    autoApplyAbo(abo, currentEmail).catch(err => {
+                        console.error("❌ AutoApplyAbo-Fehler:", err);
+                    });
+                }
+            } else {
+                console.log("✅ Keine Abo-Daten (neuer User)");
             }
-        } catch (err) {
-            console.error("❌ Exception beim Laden der Abo-Einstellungen:", err);
-            if (loadingEl) {
-                loadingEl.textContent = "Fehler: " + err.message;
-            }
-        }
+        })
+        .catch(err => {
+            console.error("❌ Error in async chain:", err);
+        });
 
-        // ✅ UI anzeigen (NACH Datenladen!)
-        if (loadingEl) loadingEl.hidden = true;
-        if (formularEl) formularEl.hidden = false;
-        initEventListeners();
-        renderFormular();
-
-        // Abo-Auto-Apply im Hintergrund starten
-        if (abo.aktiv && abo.wochentage.length > 0 && currentEmail) {
-            console.log("🔄 Starte autoApplyAbo...");
-            autoApplyAbo(abo, currentEmail).catch(err => {
-                console.error("❌ autoApplyAbo Fehler:", err);
-            });
-        }
-
-        console.log("✅ Bestellabo-Seite erfolgreich geladen");
-    } catch (globalError) {
-        console.error("❌ KRITISCHER FEHLER in initSeite:", globalError);
-        if (loadingEl) {
-            loadingEl.textContent = "FEHLER: " + (globalError?.message || String(globalError));
-            loadingEl.hidden = false;
-        }
-        if (formularEl) {
-            formularEl.hidden = true;
-        }
-    }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("✅ DOMContentLoaded event ausgelöst");
-    initHeader();
-    initSeite().catch(err => {
-        console.error("❌ initSeite Promise Fehler:", err);
-    });
+    console.log("🟢 DOMContentLoaded: COMPLETE (async Teil läuft im Hintergrund)");
 });
