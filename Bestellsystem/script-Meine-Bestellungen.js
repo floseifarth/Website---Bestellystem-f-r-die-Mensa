@@ -6,6 +6,53 @@ const WOCHENTAGE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "
 const STANDARD_KATEGORIEN = ["Studierende", "Bedienstete", "Gäste"];
 const MAX_GERICHTE_PRO_TAG = 3;
 
+const BADGE_CACHE_KEY = "mensa-badge-status-v1";
+const BADGE_CACHE_TTL_MS = 90 * 1000; // 90 Sekunden
+
+function todayIso() {
+    return new Date().toISOString().split("T")[0];
+}
+
+function readCachedBadge() {
+    try {
+        const raw = sessionStorage.getItem(BADGE_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+        const age = Date.now() - Number(parsed.cachedAt || 0);
+        if (!Number.isFinite(age) || age > BADGE_CACHE_TTL_MS) return null;
+        if (parsed.isoDate !== todayIso()) return null;
+        return parsed;
+    } catch (_error) {
+        return null;
+    }
+}
+
+function writeCachedBadge(userId, className, textContent) {
+    try {
+        if (!userId) {
+            sessionStorage.removeItem(BADGE_CACHE_KEY);
+            return;
+        }
+        sessionStorage.setItem(BADGE_CACHE_KEY, JSON.stringify({
+            userId,
+            className,
+            textContent,
+            isoDate: todayIso(),
+            cachedAt: Date.now()
+        }));
+    } catch (_error) {
+        // Ignore cache errors
+    }
+}
+
+function applyBadgeState(badge, className, textContent) {
+    if (!badge) return;
+    badge.style.display = "inline-block";
+    badge.className = className || "bestellstatus-badge";
+    badge.textContent = textContent || "Keine aktive Bestellung";
+}
+
 function mappeAboNutzertypZuKategorie(nutzertyp) {
     const typ = String(nutzertyp || "").trim().toLowerCase();
     if (typ === "externe" || typ === "gäste" || typ === "gaeste") return "Gäste";
@@ -43,37 +90,47 @@ async function aktualisiereBestellstatusHeader(userId) {
     const badge = document.getElementById("bestellstatus-badge");
     if (!badge) return;
 
+    // Zuerst Cache auslesen (schnell)
+    const cached = readCachedBadge();
+    if (cached) {
+        applyBadgeState(badge, cached.className, cached.textContent);
+    }
+
     const heute = new Date();
     const isoHeute = heute.getFullYear() + "-" +
         String(heute.getMonth() + 1).padStart(2, "0") + "-" +
         String(heute.getDate()).padStart(2, "0");
 
-    const { data } = await supabase
-        .from("Bestellungen")
-        .select("id")
-        .eq("auth_user_id", userId)
-        .eq("bestell_datum", isoHeute)
-        .limit(1);
+    try {
+        const { data } = await supabase
+            .from("Bestellungen")
+            .select("id")
+            .eq("auth_user_id", userId)
+            .eq("bestell_datum", isoHeute)
+            .limit(1);
 
-    const hatBestellung = Array.isArray(data) && data.length > 0;
-    const stunde = heute.getHours();
-    const minute = heute.getMinutes();
-    const zeitInMinuten = stunde * 60 + minute;
-    const ist1200 = 12 * 60;
-    const ist1315 = 13 * 60 + 15;
+        const hatBestellung = Array.isArray(data) && data.length > 0;
+        const stunde = heute.getHours();
+        const minute = heute.getMinutes();
+        const zeitInMinuten = stunde * 60 + minute;
+        const ist1200 = 12 * 60;
+        const ist1315 = 13 * 60 + 15;
 
-    badge.style.display = "inline-block";
-    badge.className = "bestellstatus-badge";
+        let className = "bestellstatus-badge";
+        let textContent = "Keine aktive Bestellung";
 
-    if (zeitInMinuten >= ist1200 && zeitInMinuten < ist1315) {
-        badge.classList.add("badge-essensvergabe");
-        badge.textContent = "Essensvergabe";
-    } else if (hatBestellung) {
-        badge.classList.add("badge-vorbestellt");
-        badge.textContent = "Vorbestellt";
-    } else {
-        badge.classList.add("badge-keine");
-        badge.textContent = "Keine aktive Bestellung";
+        if (zeitInMinuten >= ist1200 && zeitInMinuten < ist1315 && hatBestellung) {
+            className += " badge-essensvergabe";
+            textContent = "Essensvergabe";
+        } else {
+            className += " badge-keine";
+            textContent = "Keine aktive Bestellung";
+        }
+
+        applyBadgeState(badge, className, textContent);
+        writeCachedBadge(userId, className, textContent);
+    } catch (error) {
+        console.error("Fehler beim Badge-Update:", error);
     }
 }
 function toEuroText(priceValue) {
@@ -433,7 +490,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Badge mit Bestellstatus aktualisieren
     if (user) {
-        await aktualisiereBestellstatusHeader(user.id);
+        try {
+            await aktualisiereBestellstatusHeader(user.id);
+            console.log("Badge aktualisiert für user", user.id);
+        } catch (error) {
+            console.error("Fehler beim Badge-Update:", error);
+        }
     }
 
     // Preis von Zahl in deutsches Format umwandeln (z.B. 4.10 → "4,10 €")
